@@ -10,12 +10,32 @@ on:
 
 jobs:
   backend-build:
-    name: Backend Build
+    name: Backend Build & Integration Tests
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: releaseguard
+          POSTGRES_USER: releaseguard
+          POSTGRES_PASSWORD: releaseguard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U releaseguard -d releaseguard"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     defaults:
       run:
         working-directory: backend
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/releaseguard
+      DB_USERNAME: releaseguard
+      DB_PASSWORD: releaseguard
 
     steps:
       - name: Checkout repository
@@ -28,7 +48,10 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build backend
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
+
+      - name: Build and test backend
         run: ./mvnw clean verify
 
   frontend-build:
