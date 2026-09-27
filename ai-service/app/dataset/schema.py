@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from typing import Dict
-from dataclasses import dataclass
-
 
 DATASET_VERSION = "1.0.0"
 DATASET_SPLIT_VERSION = "1.0.0"
