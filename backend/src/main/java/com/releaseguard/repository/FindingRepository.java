@@ -10,4 +10,6 @@ public interface FindingRepository extends JpaRepository<FindingEntity, Long> {
     List<FindingEntity> findByChangeIdOrderByIdAsc(Long changeId);
 
     long countByChangeId(Long changeId);
+
+    void deleteByChangeId(Long changeId);
 }

@@ -1,6 +1,7 @@
 package com.releaseguard;
 
 import com.releaseguard.repository.ChangeRepository;
+import com.releaseguard.repository.FindingRepository;
 import com.releaseguard.repository.ProjectRepository;
 import com.releaseguard.repository.SourceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,9 @@ class ReleaseGuardApplicationTests {
     private MockMvc mockMvc;
 
     @Autowired
+    private FindingRepository findingRepository;
+
+    @Autowired
     private ChangeRepository changeRepository;
 
     @Autowired
@@ -40,8 +44,9 @@ class ReleaseGuardApplicationTests {
         /*
          * Delete child records first because of foreign-key constraints:
          *
-         * changes -> sources -> projects
+         * findings -> changes -> sources -> projects
          */
+        findingRepository.deleteAllInBatch();
         changeRepository.deleteAllInBatch();
         sourceRepository.deleteAllInBatch();
         projectRepository.deleteAllInBatch();

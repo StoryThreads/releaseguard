@@ -9,6 +9,12 @@ public interface SourceRepository extends JpaRepository<Source, Long> {
 
     List<Source> findByProjectId(Long projectId);
 
+    List<Source> findByProviderIgnoreCaseAndRepositoryOwnerIgnoreCaseAndRepositoryNameIgnoreCase(
+        String provider,
+        String repositoryOwner,
+        String repositoryName
+    );
+
     boolean existsByProjectIdAndProviderAndRepositoryOwnerAndRepositoryName(
         Long projectId,
         String provider,

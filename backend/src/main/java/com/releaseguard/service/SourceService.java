@@ -69,6 +69,34 @@ public class SourceService {
     }
 
     @Transactional(readOnly = true)
+    public Source getGitHubSource(String repositoryOwner, String repositoryName) {
+
+        List<Source> sources =
+            sourceRepository.findByProviderIgnoreCaseAndRepositoryOwnerIgnoreCaseAndRepositoryNameIgnoreCase(
+                "github",
+                repositoryOwner,
+                repositoryName
+            );
+
+        if (sources.isEmpty()) {
+            throw new ResourceNotFoundException(
+                "GitHub source not found for repository: "
+                    + repositoryOwner + "/" + repositoryName
+            );
+        }
+
+        if (sources.size() > 1) {
+            throw new ConflictException(
+                "Multiple GitHub sources found for repository: "
+                    + repositoryOwner + "/" + repositoryName
+                    + ". Repository analysis is ambiguous."
+            );
+        }
+
+        return sources.get(0);
+    }
+
+    @Transactional(readOnly = true)
     public Source getSource(Long id) {
 
         return sourceRepository.findById(id)

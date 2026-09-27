@@ -59,6 +59,33 @@ public class ChangeService {
         return changeRepository.save(change);
     }
 
+    public Change getOrCreateChange(
+        Long sourceId,
+        String externalChangeId,
+        String title,
+        String author,
+        String baseRevision,
+        String headRevision,
+        String status
+    ) {
+
+        Source source = sourceService.getSource(sourceId);
+
+        Change change = changeRepository
+            .findBySourceIdAndExternalChangeId(sourceId, externalChangeId)
+            .orElseGet(Change::new);
+
+        change.setSource(source);
+        change.setExternalChangeId(externalChangeId);
+        change.setTitle(title);
+        change.setAuthor(author);
+        change.setBaseRevision(baseRevision);
+        change.setHeadRevision(headRevision);
+        change.setStatus(status);
+
+        return changeRepository.save(change);
+    }
+
     @Transactional(readOnly = true)
     public List<Change> getChangesBySource(Long sourceId) {
 

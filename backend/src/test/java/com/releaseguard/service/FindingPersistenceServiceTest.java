@@ -49,7 +49,7 @@ class FindingPersistenceServiceTest {
             .thenReturn(List.of(savedEntity));
 
         List<FindingEntity> result =
-            service.saveFindings(
+            service.replaceFindings(
                 change,
                 List.of(finding)
             );
@@ -116,7 +116,7 @@ class FindingPersistenceServiceTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FindingEntity> result =
-            service.saveFindings(
+            service.replaceFindings(
                 change,
                 List.of(first, second)
             );
@@ -132,7 +132,7 @@ class FindingPersistenceServiceTest {
         Change change = new Change();
 
         List<FindingEntity> result =
-            service.saveFindings(
+            service.replaceFindings(
                 change,
                 List.of()
             );
@@ -148,7 +148,7 @@ class FindingPersistenceServiceTest {
         Change change = new Change();
 
         List<FindingEntity> result =
-            service.saveFindings(
+            service.replaceFindings(
                 change,
                 null
             );
@@ -173,7 +173,7 @@ class FindingPersistenceServiceTest {
         );
 
         List<FindingEntity> result =
-            service.saveFindings(
+            service.replaceFindings(
                 null,
                 List.of(finding)
             );

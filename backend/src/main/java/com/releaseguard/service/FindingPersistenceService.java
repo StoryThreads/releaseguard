@@ -21,12 +21,20 @@ public class FindingPersistenceService {
     }
 
     @Transactional
-    public List<FindingEntity> saveFindings(
+    public List<FindingEntity> replaceFindings(
         Change change,
         List<Finding> findings
     ) {
 
-        if (change == null || findings == null || findings.isEmpty()) {
+        if (change == null) {
+            return List.of();
+        }
+
+        if (change.getId() != null) {
+            findingRepository.deleteByChangeId(change.getId());
+        }
+
+        if (findings == null || findings.isEmpty()) {
             return List.of();
         }
 
