@@ -36,6 +36,7 @@ jobs:
       DB_URL: jdbc:postgresql://localhost:5432/releaseguard
       DB_USERNAME: releaseguard
       DB_PASSWORD: releaseguard
+      GITHUB_TOKEN: ${{ secrets.RELEASEGUARD_GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
