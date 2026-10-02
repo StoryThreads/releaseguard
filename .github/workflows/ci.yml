@@ -49,11 +49,52 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service/requirements.txt
+
+      - name: Install AI service dependencies
+        working-directory: ai-service
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Run AI service tests
+        working-directory: ai-service
+        run: python -m pytest -q
+
+      - name: Build XGBoost model artifact
+        working-directory: ai-service
+        run: python scripts/train_xgboost.py
+
+      - name: Start AI prediction service
+        working-directory: ai-service
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/releaseguard-ai-service.log 2>&1 &
+
+      - name: Wait for AI prediction service
+        working-directory: ai-service
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health > /tmp/releaseguard-ai-health.json; then
+              cat /tmp/releaseguard-ai-health.json
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "AI service failed to become healthy."
+          cat /tmp/releaseguard-ai-service.log || true
+          exit 1
+
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
       - name: Build and test backend
         run: ./mvnw clean verify
+        env:
+          ML_SERVICE_URL: http://127.0.0.1:8000
 
   frontend-build:
     name: Frontend Build
