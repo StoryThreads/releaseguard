@@ -16,8 +16,9 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.when;
     },
     bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class KafkaReliabilityTest {
 
     private static final Long PROJECT_ID = 292L;
@@ -65,11 +67,8 @@ class KafkaReliabilityTest {
     void shouldRetryFailedAnalysisAndEventuallySucceed()
         throws InterruptedException {
 
-        String eventId =
-            UUID.randomUUID().toString();
-
-        EventEnvelope<AnalyzePullRequestEvent> event =
-            createEvent(eventId);
+        String eventId = UUID.randomUUID().toString();
+        EventEnvelope<AnalyzePullRequestEvent> event = createEvent(eventId);
 
         when(
             analysisService.analyzePullRequest(
@@ -79,11 +78,7 @@ class KafkaReliabilityTest {
                 1L
             )
         )
-            .thenThrow(
-                new IllegalStateException(
-                    "temporary failure"
-                )
-            )
+            .thenThrow(new IllegalStateException("temporary failure"))
             .thenReturn(null);
 
         kafkaTemplate.send(
@@ -105,30 +100,18 @@ class KafkaReliabilityTest {
         waitUntilEventCompleted(eventId);
 
         ProcessedEvent processedEvent =
-            processedEventRepository
-                .findById(eventId)
-                .orElseThrow();
+            processedEventRepository.findById(eventId).orElseThrow();
 
-        assertEquals(
-            "COMPLETED",
-            processedEvent.getStatus()
-        );
+        assertEquals("COMPLETED", processedEvent.getStatus());
     }
 
     @Test
     void shouldSendFailedEventToDlq() {
 
-        String eventId =
-            UUID.randomUUID().toString();
+        String eventId = UUID.randomUUID().toString();
+        EventEnvelope<AnalyzePullRequestEvent> event = createEvent(eventId);
 
-        EventEnvelope<AnalyzePullRequestEvent> event =
-            createEvent(eventId);
-
-        doThrow(
-            new IllegalStateException(
-                "simulated analysis failure"
-            )
-        )
+        doThrow(new IllegalStateException("simulated analysis failure"))
             .when(analysisService)
             .analyzePullRequest(
                 PROJECT_ID,
@@ -154,41 +137,36 @@ class KafkaReliabilityTest {
         );
 
         Map<String, Object> properties =
-            createConsumerProperties(
-                "releaseguard-dlq-test"
-            );
+            createConsumerProperties("releaseguard-dlq-test");
 
-        Consumer<String, String> consumer =
-            new DefaultKafkaConsumerFactory<String, String>(
-                properties
-            ).createConsumer();
-
-        embeddedKafka.consumeFromAnEmbeddedTopic(
-            consumer,
-            KafkaTopics.ANALYSIS_REQUEST_DLQ
-        );
-
-        ConsumerRecord<String, String> record =
-            KafkaTestUtils.getSingleRecord(
+        try (
+            Consumer<String, String> consumer =
+                new DefaultKafkaConsumerFactory<String, String>(
+                    properties
+                ).createConsumer()
+        ) {
+            embeddedKafka.consumeFromAnEmbeddedTopic(
                 consumer,
-                KafkaTopics.ANALYSIS_REQUEST_DLQ,
-                Duration.ofSeconds(10)
+                KafkaTopics.ANALYSIS_REQUEST_DLQ
             );
 
-        assertNotNull(record);
+            ConsumerRecord<String, String> record =
+                KafkaTestUtils.getSingleRecord(
+                    consumer,
+                    KafkaTopics.ANALYSIS_REQUEST_DLQ,
+                    Duration.ofSeconds(10)
+                );
 
-        consumer.close();
+            assertNotNull(record);
+        }
     }
 
     @Test
     void shouldProcessSameEventOnlyOnce()
         throws InterruptedException {
 
-        String eventId =
-            UUID.randomUUID().toString();
-
-        EventEnvelope<AnalyzePullRequestEvent> event =
-            createEvent(eventId);
+        String eventId = UUID.randomUUID().toString();
+        EventEnvelope<AnalyzePullRequestEvent> event = createEvent(eventId);
 
         kafkaTemplate.send(
             KafkaTopics.ANALYSIS_REQUEST,
@@ -227,37 +205,23 @@ class KafkaReliabilityTest {
         );
 
         ProcessedEvent processedEvent =
-            processedEventRepository
-                .findById(eventId)
-                .orElseThrow();
+            processedEventRepository.findById(eventId).orElseThrow();
 
-        assertEquals(
-            "COMPLETED",
-            processedEvent.getStatus()
-        );
+        assertEquals("COMPLETED", processedEvent.getStatus());
     }
 
-    private void waitUntilEventCompleted(
-        String eventId
-    ) throws InterruptedException {
+    private void waitUntilEventCompleted(String eventId)
+        throws InterruptedException {
 
-        long timeoutMillis =
-            System.currentTimeMillis() + 10000;
+        long timeoutMillis = System.currentTimeMillis() + 10000;
 
-        while (
-            System.currentTimeMillis() < timeoutMillis
-        ) {
-
+        while (System.currentTimeMillis() < timeoutMillis) {
             ProcessedEvent event =
-                processedEventRepository
-                    .findById(eventId)
-                    .orElse(null);
+                processedEventRepository.findById(eventId).orElse(null);
 
             if (
                 event != null
-                    && "COMPLETED".equals(
-                    event.getStatus()
-                )
+                    && "COMPLETED".equals(event.getStatus())
             ) {
                 return;
             }
@@ -266,43 +230,25 @@ class KafkaReliabilityTest {
         }
 
         throw new AssertionError(
-            "Event was not marked COMPLETED within timeout: "
-                + eventId
+            "Event was not marked COMPLETED within timeout: " + eventId
         );
     }
 
-    private Map<String, Object> createConsumerProperties(
-        String groupId
-    ) {
+    private Map<String, Object> createConsumerProperties(String groupId) {
 
-        Map<String, Object> properties =
-            new HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
 
         properties.put(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             embeddedKafka.getBrokersAsString()
         );
-
-        properties.put(
-            ConsumerConfig.GROUP_ID_CONFIG,
-            groupId
-        );
-
-        properties.put(
-            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-            "earliest"
-        );
-
-        properties.put(
-            ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-            false
-        );
-
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         properties.put(
             ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
             StringDeserializer.class
         );
-
         properties.put(
             ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
             StringDeserializer.class
@@ -311,9 +257,7 @@ class KafkaReliabilityTest {
         return properties;
     }
 
-    private EventEnvelope<AnalyzePullRequestEvent> createEvent(
-        String eventId
-    ) {
+    private EventEnvelope<AnalyzePullRequestEvent> createEvent(String eventId) {
 
         return new EventEnvelope<>(
             eventId,
