@@ -11,8 +11,11 @@ import com.releaseguard.github.GitHubChangeSnapshotMapper;
 import com.releaseguard.github.GitHubRestAdapter;
 import com.releaseguard.github.dto.GitHubPullRequestFileResponse;
 import com.releaseguard.github.dto.GitHubPullRequestResponse;
+import com.releaseguard.ml.MlPredictionClient;
+import com.releaseguard.ml.dto.MlPredictionResponse;
 import com.releaseguard.service.ChangeService;
 import com.releaseguard.service.FindingPersistenceService;
+import com.releaseguard.service.MlPredictionPersistenceService;
 import com.releaseguard.service.SourceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,8 @@ public class AnalysisService {
     private final ChangeService changeService;
     private final AnalyzerEngine analyzerEngine;
     private final FindingPersistenceService findingPersistenceService;
+    private final MlPredictionClient mlPredictionClient;
+    private final MlPredictionPersistenceService mlPredictionPersistenceService;
 
     public AnalysisService(
         GitHubRestAdapter githubRestAdapter,
@@ -35,7 +40,9 @@ public class AnalysisService {
         SourceService sourceService,
         ChangeService changeService,
         AnalyzerEngine analyzerEngine,
-        FindingPersistenceService findingPersistenceService
+        FindingPersistenceService findingPersistenceService,
+        MlPredictionClient mlPredictionClient,
+        MlPredictionPersistenceService mlPredictionPersistenceService
     ) {
         this.githubRestAdapter = githubRestAdapter;
         this.snapshotMapper = snapshotMapper;
@@ -43,14 +50,24 @@ public class AnalysisService {
         this.changeService = changeService;
         this.analyzerEngine = analyzerEngine;
         this.findingPersistenceService = findingPersistenceService;
+        this.mlPredictionClient = mlPredictionClient;
+        this.mlPredictionPersistenceService = mlPredictionPersistenceService;
     }
 
     @Transactional
     public AnalyzePullRequestResponse analyzePullRequest(
+        Long projectId,
         String owner,
         String repository,
         long pullRequestNumber
     ) {
+
+        Source source =
+            sourceService.getGitHubSource(
+                projectId,
+                owner,
+                repository
+            );
 
         GitHubPullRequestResponse pullRequest =
             githubRestAdapter.getPullRequest(
@@ -74,34 +91,36 @@ public class AnalysisService {
                 files
             );
 
-        Source source =
-            sourceService.getGitHubSource(owner, repository);
+        String author =
+            pullRequest.getUser() != null
+                ? pullRequest.getUser().getLogin()
+                : "unknown";
 
-        String author = pullRequest.getUser() != null
-            ? pullRequest.getUser().getLogin()
-            : "unknown";
+        String baseRevision =
+            pullRequest.getBase() != null
+                ? pullRequest.getBase().getSha()
+                : "unknown";
 
-        String baseRevision = pullRequest.getBase() != null
-            ? pullRequest.getBase().getSha()
-            : "unknown";
+        String headRevision =
+            pullRequest.getHead() != null
+                ? pullRequest.getHead().getSha()
+                : "unknown";
 
-        String headRevision = pullRequest.getHead() != null
-            ? pullRequest.getHead().getSha()
-            : "unknown";
+        String status =
+            pullRequest.getState() != null
+                ? pullRequest.getState()
+                : "unknown";
 
-        String status = pullRequest.getState() != null
-            ? pullRequest.getState()
-            : "unknown";
-
-        Change change = changeService.getOrCreateChange(
-            source.getId(),
-            String.valueOf(pullRequestNumber),
-            snapshot.getTitle(),
-            author,
-            baseRevision,
-            headRevision,
-            status
-        );
+        Change change =
+            changeService.getOrCreateChange(
+                source.getId(),
+                String.valueOf(pullRequestNumber),
+                snapshot.getTitle(),
+                author,
+                baseRevision,
+                headRevision,
+                status
+            );
 
         AnalyzerContext context =
             new AnalyzerContext(snapshot);
@@ -114,10 +133,22 @@ public class AnalysisService {
             findings
         );
 
+        MlPredictionResponse riskAnalysis =
+            mlPredictionClient.predict(
+                snapshot,
+                findings
+            );
+
+        mlPredictionPersistenceService.save(
+            change,
+            riskAnalysis
+        );
+
         return new AnalyzePullRequestResponse(
             snapshot,
             change.getId(),
-            findings
+            findings,
+            riskAnalysis
         );
     }
 }

@@ -17,7 +17,6 @@ public class AnalysisEventConsumer {
         LoggerFactory.getLogger(AnalysisEventConsumer.class);
 
     private final AnalysisService analysisService;
-
     private final ProcessedEventService processedEventService;
 
     public AnalysisEventConsumer(
@@ -59,9 +58,7 @@ public class AnalysisEventConsumer {
                 correlationId
             );
 
-            if (
-                processedEventService.isCompleted(eventId)
-            ) {
+            if (processedEventService.isCompleted(eventId)) {
 
                 log.info(
                     "Ignoring already completed event: eventId={}, correlationId={}",
@@ -82,6 +79,7 @@ public class AnalysisEventConsumer {
                 event.getPayload();
 
             analysisService.analyzePullRequest(
+                payload.getProjectId(),
                 payload.getOwner(),
                 payload.getRepository(),
                 payload.getPullRequestNumber()

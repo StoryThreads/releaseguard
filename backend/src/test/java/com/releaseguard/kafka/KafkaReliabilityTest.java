@@ -44,6 +44,8 @@ import static org.mockito.Mockito.when;
 )
 class KafkaReliabilityTest {
 
+    private static final Long PROJECT_ID = 292L;
+
     @Autowired
     private KafkaTemplate<
         String,
@@ -71,6 +73,7 @@ class KafkaReliabilityTest {
 
         when(
             analysisService.analyzePullRequest(
+                PROJECT_ID,
                 "StoryThreads",
                 "releaseguard",
                 1L
@@ -91,9 +94,9 @@ class KafkaReliabilityTest {
 
         verify(
             analysisService,
-            timeout(10000)
-                .times(2)
+            timeout(10000).times(2)
         ).analyzePullRequest(
+            PROJECT_ID,
             "StoryThreads",
             "releaseguard",
             1L
@@ -128,6 +131,7 @@ class KafkaReliabilityTest {
         )
             .when(analysisService)
             .analyzePullRequest(
+                PROJECT_ID,
                 "StoryThreads",
                 "releaseguard",
                 1L
@@ -141,9 +145,9 @@ class KafkaReliabilityTest {
 
         verify(
             analysisService,
-            timeout(10000)
-                .times(3)
+            timeout(10000).times(3)
         ).analyzePullRequest(
+            PROJECT_ID,
             "StoryThreads",
             "releaseguard",
             1L
@@ -177,7 +181,8 @@ class KafkaReliabilityTest {
     }
 
     @Test
-    void shouldProcessSameEventOnlyOnce() throws InterruptedException {
+    void shouldProcessSameEventOnlyOnce()
+        throws InterruptedException {
 
         String eventId =
             UUID.randomUUID().toString();
@@ -185,26 +190,17 @@ class KafkaReliabilityTest {
         EventEnvelope<AnalyzePullRequestEvent> event =
             createEvent(eventId);
 
-        /*
-         * First publication.
-         */
         kafkaTemplate.send(
             KafkaTopics.ANALYSIS_REQUEST,
             eventId,
             event
         );
 
-        /*
-         * Wait until the first processing has actually completed.
-         *
-         * Merely verifying that analyzePullRequest() was invoked
-         * is not enough because the consumer is asynchronous.
-         */
         verify(
             analysisService,
-            timeout(10000)
-                .times(1)
+            timeout(10000).times(1)
         ).analyzePullRequest(
+            PROJECT_ID,
             "StoryThreads",
             "releaseguard",
             1L
@@ -212,25 +208,19 @@ class KafkaReliabilityTest {
 
         waitUntilEventCompleted(eventId);
 
-        /*
-         * Publish the exact same event again.
-         */
         kafkaTemplate.send(
             KafkaTopics.ANALYSIS_REQUEST,
             eventId,
             event
         );
 
-        /*
-         * Give the consumer enough time to consume the duplicate.
-         * It must NOT invoke AnalysisService again.
-         */
         Thread.sleep(2000);
 
         verify(
             analysisService,
             times(1)
         ).analyzePullRequest(
+            PROJECT_ID,
             "StoryThreads",
             "releaseguard",
             1L
@@ -331,6 +321,7 @@ class KafkaReliabilityTest {
             Instant.now(),
             UUID.randomUUID().toString(),
             new AnalyzePullRequestEvent(
+                PROJECT_ID,
                 "StoryThreads",
                 "releaseguard",
                 1L

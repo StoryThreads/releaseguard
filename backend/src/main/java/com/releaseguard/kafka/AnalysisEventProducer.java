@@ -12,15 +12,22 @@ import java.util.UUID;
 @Component
 public class AnalysisEventProducer {
 
-    private final KafkaTemplate<String, EventEnvelope<AnalyzePullRequestEvent>> kafkaTemplate;
+    private final KafkaTemplate<
+        String,
+        EventEnvelope<AnalyzePullRequestEvent>
+        > kafkaTemplate;
 
     public AnalysisEventProducer(
-        KafkaTemplate<String, EventEnvelope<AnalyzePullRequestEvent>> kafkaTemplate
+        KafkaTemplate<
+            String,
+            EventEnvelope<AnalyzePullRequestEvent>
+            > kafkaTemplate
     ) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
     public void publishAnalysisRequest(
+        Long projectId,
         String owner,
         String repository,
         Long pullRequestNumber,
@@ -29,6 +36,7 @@ public class AnalysisEventProducer {
 
         AnalyzePullRequestEvent payload =
             new AnalyzePullRequestEvent(
+                projectId,
                 owner,
                 repository,
                 pullRequestNumber

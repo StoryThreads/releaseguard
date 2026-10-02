@@ -130,3 +130,4 @@ def test_empty_label_set_is_rejected():
             ["LOW"],
             [],
         )
+        

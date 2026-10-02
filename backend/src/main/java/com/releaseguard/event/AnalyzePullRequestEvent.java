@@ -2,6 +2,8 @@ package com.releaseguard.event;
 
 public class AnalyzePullRequestEvent {
 
+    private Long projectId;
+
     private String owner;
 
     private String repository;
@@ -12,13 +14,23 @@ public class AnalyzePullRequestEvent {
     }
 
     public AnalyzePullRequestEvent(
+        Long projectId,
         String owner,
         String repository,
         Long pullRequestNumber
     ) {
+        this.projectId = projectId;
         this.owner = owner;
         this.repository = repository;
         this.pullRequestNumber = pullRequestNumber;
+    }
+
+    public Long getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
     }
 
     public String getOwner() {

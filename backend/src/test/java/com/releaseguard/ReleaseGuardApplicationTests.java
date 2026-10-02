@@ -2,6 +2,7 @@ package com.releaseguard;
 
 import com.releaseguard.repository.ChangeRepository;
 import com.releaseguard.repository.FindingRepository;
+import com.releaseguard.repository.MlPredictionRepository;
 import com.releaseguard.repository.ProjectRepository;
 import com.releaseguard.repository.SourceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,9 @@ class ReleaseGuardApplicationTests {
     private MockMvc mockMvc;
 
     @Autowired
+    private MlPredictionRepository mlPredictionRepository;
+
+    @Autowired
     private FindingRepository findingRepository;
 
     @Autowired
@@ -41,14 +45,28 @@ class ReleaseGuardApplicationTests {
 
     @BeforeEach
     void cleanDatabase() {
+
         /*
-         * Delete child records first because of foreign-key constraints:
+         * Delete records from child tables before deleting their parents.
          *
-         * findings -> changes -> sources -> projects
+         * Dependency hierarchy:
+         *
+         * ml_predictions ──┐
+         * findings         ├──> changes ──> sources ──> projects
+         * analysis_jobs ───┘
+         *
+         * All relevant foreign keys currently use RESTRICT/NO ACTION,
+         * so the order here is intentional.
          */
+
+        mlPredictionRepository.deleteAllInBatch();
+
         findingRepository.deleteAllInBatch();
+
         changeRepository.deleteAllInBatch();
+
         sourceRepository.deleteAllInBatch();
+
         projectRepository.deleteAllInBatch();
     }
 
@@ -87,24 +105,10 @@ class ReleaseGuardApplicationTests {
     @Test
     void shouldGetProjectById() throws Exception {
 
-        String createRequest = """
-            {
-                "name": "ReleaseGuard",
-                "description": "Release analysis platform"
-            }
-            """;
-
-        String response = mockMvc.perform(
-                post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(createRequest)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        long projectId = extractId(response);
+        long projectId = createProject(
+            "ReleaseGuard",
+            "Release analysis platform"
+        );
 
         mockMvc.perform(
                 get("/api/projects/" + projectId)
@@ -123,33 +127,15 @@ class ReleaseGuardApplicationTests {
     @Test
     void shouldGetAllProjects() throws Exception {
 
-        String firstProject = """
-            {
-                "name": "Project One",
-                "description": "First project"
-            }
-            """;
+        createProject(
+            "Project One",
+            "First project"
+        );
 
-        String secondProject = """
-            {
-                "name": "Project Two",
-                "description": "Second project"
-            }
-            """;
-
-        mockMvc.perform(
-                post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(firstProject)
-            )
-            .andExpect(status().isCreated());
-
-        mockMvc.perform(
-                post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(secondProject)
-            )
-            .andExpect(status().isCreated());
+        createProject(
+            "Project Two",
+            "Second project"
+        );
 
         mockMvc.perform(
                 get("/api/projects")
@@ -182,7 +168,12 @@ class ReleaseGuardApplicationTests {
                     is("Request validation failed")
                 )
             )
-            .andExpect(jsonPath("$.details.name", notNullValue()));
+            .andExpect(
+                jsonPath(
+                    "$.details.name",
+                    notNullValue()
+                )
+            );
     }
 
     @Test
@@ -262,7 +253,12 @@ class ReleaseGuardApplicationTests {
             )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id", notNullValue()))
-            .andExpect(jsonPath("$.projectId", is((int) projectId)))
+            .andExpect(
+                jsonPath(
+                    "$.projectId",
+                    is((int) projectId)
+                )
+            )
             .andExpect(jsonPath("$.provider", is("GITHUB")))
             .andExpect(
                 jsonPath(
@@ -307,7 +303,12 @@ class ReleaseGuardApplicationTests {
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id", is((int) sourceId)))
-            .andExpect(jsonPath("$.projectId", is((int) projectId)))
+            .andExpect(
+                jsonPath(
+                    "$.projectId",
+                    is((int) projectId)
+                )
+            )
             .andExpect(jsonPath("$.provider", is("GITHUB")))
             .andExpect(
                 jsonPath(
@@ -380,7 +381,12 @@ class ReleaseGuardApplicationTests {
                     is("VALIDATION_ERROR")
                 )
             )
-            .andExpect(jsonPath("$.details", notNullValue()));
+            .andExpect(
+                jsonPath(
+                    "$.details",
+                    notNullValue()
+                )
+            );
     }
 
     @Test
@@ -505,7 +511,12 @@ class ReleaseGuardApplicationTests {
             )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id", notNullValue()))
-            .andExpect(jsonPath("$.sourceId", is((int) sourceId)))
+            .andExpect(
+                jsonPath(
+                    "$.sourceId",
+                    is((int) sourceId)
+                )
+            )
             .andExpect(
                 jsonPath(
                     "$.externalChangeId",
@@ -577,7 +588,12 @@ class ReleaseGuardApplicationTests {
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id", is((int) changeId)))
-            .andExpect(jsonPath("$.sourceId", is((int) sourceId)))
+            .andExpect(
+                jsonPath(
+                    "$.sourceId",
+                    is((int) sourceId)
+                )
+            )
             .andExpect(
                 jsonPath(
                     "$.externalChangeId",
@@ -669,7 +685,12 @@ class ReleaseGuardApplicationTests {
                     is("VALIDATION_ERROR")
                 )
             )
-            .andExpect(jsonPath("$.details", notNullValue()));
+            .andExpect(
+                jsonPath(
+                    "$.details",
+                    notNullValue()
+                )
+            );
     }
 
     @Test
@@ -781,17 +802,21 @@ class ReleaseGuardApplicationTests {
                 "name": "%s",
                 "description": "%s"
             }
-            """.formatted(name, description);
+            """.formatted(
+            name,
+            description
+        );
 
-        String response = mockMvc.perform(
-                post("/api/projects")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+        String response =
+            mockMvc.perform(
+                    post("/api/projects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         return extractId(response);
     }
@@ -820,15 +845,16 @@ class ReleaseGuardApplicationTests {
             branch
         );
 
-        String response = mockMvc.perform(
-                post("/api/sources")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+        String response =
+            mockMvc.perform(
+                    post("/api/sources")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         return extractId(response);
     }
@@ -863,23 +889,24 @@ class ReleaseGuardApplicationTests {
             status
         );
 
-        String response = mockMvc.perform(
-                post("/api/changes")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(request)
-            )
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+        String response =
+            mockMvc.perform(
+                    post("/api/changes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
         return extractId(response);
     }
 
     private long extractId(String json) {
 
-        String idValue = json
-            .replaceAll(
+        String idValue =
+            json.replaceAll(
                 ".*\"id\"\\s*:\\s*(\\d+).*",
                 "$1"
             );

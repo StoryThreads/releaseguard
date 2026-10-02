@@ -14,8 +14,11 @@ import com.releaseguard.github.GitHubChangeSnapshotMapper;
 import com.releaseguard.github.GitHubRestAdapter;
 import com.releaseguard.github.dto.GitHubPullRequestFileResponse;
 import com.releaseguard.github.dto.GitHubPullRequestResponse;
+import com.releaseguard.ml.MlPredictionClient;
+import com.releaseguard.ml.dto.MlPredictionResponse;
 import com.releaseguard.service.ChangeService;
 import com.releaseguard.service.FindingPersistenceService;
+import com.releaseguard.service.MlPredictionPersistenceService;
 import com.releaseguard.service.SourceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,85 +56,206 @@ class AnalysisServiceTest {
     @Mock
     private FindingPersistenceService findingPersistenceService;
 
+    @Mock
+    private MlPredictionClient mlPredictionClient;
+
+    @Mock
+    private MlPredictionPersistenceService mlPredictionPersistenceService;
+
     @InjectMocks
     private AnalysisService analysisService;
 
     @Test
     void shouldRunAnalyzersAndPersistFindings() {
 
-        GitHubPullRequestResponse pullRequest = new GitHubPullRequestResponse();
-        pullRequest.setNumber(1L);
+        Long projectId = 1L;
+        String owner = "owner";
+        String repository = "repo";
+        long pullRequestNumber = 1L;
+
+        GitHubPullRequestResponse pullRequest =
+            new GitHubPullRequestResponse();
+
+        pullRequest.setNumber(pullRequestNumber);
         pullRequest.setTitle("Test PR");
         pullRequest.setState("open");
 
         GitHubPullRequestResponse.User user =
             new GitHubPullRequestResponse.User();
+
         user.setLogin("test-user");
         pullRequest.setUser(user);
 
         GitHubPullRequestResponse.Branch base =
             new GitHubPullRequestResponse.Branch();
+
         base.setSha("base-sha");
         base.setRef("main");
         pullRequest.setBase(base);
 
         GitHubPullRequestResponse.Branch head =
             new GitHubPullRequestResponse.Branch();
+
         head.setSha("head-sha");
         head.setRef("feature/test");
         pullRequest.setHead(head);
 
-        ChangeSnapshot snapshot = new ChangeSnapshot();
-        snapshot.setPullRequestNumber(1L);
-        snapshot.setOwner("owner");
-        snapshot.setRepository("repo");
+        ChangeSnapshot snapshot =
+            new ChangeSnapshot();
+
+        snapshot.setPullRequestNumber(pullRequestNumber);
+        snapshot.setOwner(owner);
+        snapshot.setRepository(repository);
         snapshot.setTitle("Test PR");
 
-        Source source = new Source();
+        Source source = mock(Source.class);
 
-        Change change = new Change();
-        change.setExternalChangeId("1");
+        when(source.getId()).thenReturn(10L);
 
-        Finding finding = new Finding(
-            AnalyzerType.CODE,
-            FindingType.CODE_ISSUE,
-            FindingSeverity.MEDIUM,
-            "CODE-001",
-            "Test finding",
-            "Test message",
-            "Test.java",
-            10
+        Change change = mock(Change.class);
+
+        when(change.getId()).thenReturn(20L);
+
+        Finding finding =
+            new Finding(
+                AnalyzerType.CODE,
+                FindingType.CODE_ISSUE,
+                FindingSeverity.MEDIUM,
+                "CODE-001",
+                "Test finding",
+                "Test message",
+                "Test.java",
+                10
+            );
+
+        when(
+            sourceService.getGitHubSource(
+                projectId,
+                owner,
+                repository
+            )
+        ).thenReturn(source);
+
+        when(
+            githubRestAdapter.getPullRequest(
+                owner,
+                repository,
+                pullRequestNumber
+            )
+        ).thenReturn(pullRequest);
+
+        when(
+            githubRestAdapter.getPullRequestFiles(
+                owner,
+                repository,
+                pullRequestNumber
+            )
+        ).thenReturn(
+            List.<GitHubPullRequestFileResponse>of()
         );
 
-        when(githubRestAdapter.getPullRequest("owner", "repo", 1L))
-            .thenReturn(pullRequest);
-        when(githubRestAdapter.getPullRequestFiles("owner", "repo", 1L))
-            .thenReturn(List.<GitHubPullRequestFileResponse>of());
-        when(snapshotMapper.map(
-            eq("owner"), eq("repo"), eq(pullRequest), any()
-        )).thenReturn(snapshot);
-        when(sourceService.getGitHubSource("owner", "repo"))
-            .thenReturn(source);
-        when(changeService.getOrCreateChange(
-            any(), any(), any(), any(), any(), any(), any()
-        )).thenReturn(change);
-        when(analyzerEngine.analyze(any(AnalyzerContext.class)))
-            .thenReturn(List.of(finding));
+        when(
+            snapshotMapper.map(
+                eq(owner),
+                eq(repository),
+                eq(pullRequest),
+                any()
+            )
+        ).thenReturn(snapshot);
+
+        when(
+            changeService.getOrCreateChange(
+                eq(source.getId()),
+                eq(String.valueOf(pullRequestNumber)),
+                eq(snapshot.getTitle()),
+                eq("test-user"),
+                eq("base-sha"),
+                eq("head-sha"),
+                eq("open")
+            )
+        ).thenReturn(change);
+
+        when(
+            analyzerEngine.analyze(
+                any(AnalyzerContext.class)
+            )
+        ).thenReturn(
+            List.of(finding)
+        );
+
+        MlPredictionResponse prediction =
+            new MlPredictionResponse();
+
+        prediction.setRiskLevel("MEDIUM");
+        prediction.setRiskScore(50.0);
+        prediction.setModelName("xgboost_candidate");
+        prediction.setModelVersion("1.0.0");
+        prediction.setFeatureVersion("1.0.0");
+        prediction.setDatasetVersion("1.0.0");
+
+        when(
+            mlPredictionClient.predict(
+                eq(snapshot),
+                eq(List.of(finding))
+            )
+        ).thenReturn(prediction);
 
         AnalyzePullRequestResponse response =
-            analysisService.analyzePullRequest("owner", "repo", 1L);
+            analysisService.analyzePullRequest(
+                projectId,
+                owner,
+                repository,
+                pullRequestNumber
+            );
 
-        assertSame(snapshot, response.getSnapshot());
-        assertSame(change.getId(), response.getChangeId());
-        assertEquals(List.of(finding), response.getFindings());
+        assertSame(
+            snapshot,
+            response.getSnapshot()
+        );
+
+        assertSame(
+            change.getId(),
+            response.getChangeId()
+        );
+
+        assertEquals(
+            List.of(finding),
+            response.getFindings()
+        );
 
         ArgumentCaptor<AnalyzerContext> contextCaptor =
-            ArgumentCaptor.forClass(AnalyzerContext.class);
+            ArgumentCaptor.forClass(
+                AnalyzerContext.class
+            );
 
-        verify(analyzerEngine).analyze(contextCaptor.capture());
-        assertSame(snapshot, contextCaptor.getValue().changeSnapshot());
+        verify(analyzerEngine)
+            .analyze(
+                contextCaptor.capture()
+            );
+
+        assertSame(
+            snapshot,
+            contextCaptor
+                .getValue()
+                .changeSnapshot()
+        );
 
         verify(findingPersistenceService)
-            .replaceFindings(change, List.of(finding));
+            .replaceFindings(
+                change,
+                List.of(finding)
+            );
+
+        verify(mlPredictionClient)
+            .predict(
+                snapshot,
+                List.of(finding)
+            );
+
+        verify(mlPredictionPersistenceService)
+            .save(
+                change,
+                prediction
+            );
     }
 }

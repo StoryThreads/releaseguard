@@ -25,6 +25,7 @@ public class AnalysisController {
 
         AnalyzePullRequestResponse response =
             analysisService.analyzePullRequest(
+                request.getProjectId(),
                 request.getOwner(),
                 request.getRepository(),
                 request.getPullRequestNumber()

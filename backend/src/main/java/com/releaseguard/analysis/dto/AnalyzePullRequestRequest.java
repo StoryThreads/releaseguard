@@ -6,6 +6,10 @@ import jakarta.validation.constraints.NotNull;
 
 public class AnalyzePullRequestRequest {
 
+    @NotNull
+    @Min(1)
+    private Long projectId;
+
     @NotBlank
     private String owner;
 
@@ -15,6 +19,14 @@ public class AnalyzePullRequestRequest {
     @NotNull
     @Min(1)
     private Long pullRequestNumber;
+
+    public Long getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
+    }
 
     public String getOwner() {
         return owner;

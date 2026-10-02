@@ -24,6 +24,8 @@ import static org.mockito.Mockito.verify;
 )
 class AnalysisEventConsumerTest {
 
+    private static final Long PROJECT_ID = 292L;
+
     @Autowired
     private KafkaTemplate<
         String,
@@ -41,6 +43,7 @@ class AnalysisEventConsumerTest {
 
         AnalyzePullRequestEvent payload =
             new AnalyzePullRequestEvent(
+                PROJECT_ID,
                 "StoryThreads",
                 "releaseguard",
                 1L
@@ -61,11 +64,14 @@ class AnalysisEventConsumerTest {
             event
         );
 
-        verify(analysisService, timeout(10000))
-            .analyzePullRequest(
-                "StoryThreads",
-                "releaseguard",
-                1L
-            );
+        verify(
+            analysisService,
+            timeout(10000)
+        ).analyzePullRequest(
+            PROJECT_ID,
+            "StoryThreads",
+            "releaseguard",
+            1L
+        );
     }
 }

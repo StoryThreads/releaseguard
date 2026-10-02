@@ -42,6 +42,7 @@ class AnalysisEventProducerTest {
         String correlationId = "test-correlation-id";
 
         producer.publishAnalysisRequest(
+            1L,
             "StoryThreads",
             "releaseguard",
             1L,
@@ -76,12 +77,15 @@ class AnalysisEventProducerTest {
         );
 
         ConsumerFactory<String, String> consumerFactory =
-            new DefaultKafkaConsumerFactory<>(consumerProperties);
+            new DefaultKafkaConsumerFactory<>(
+                consumerProperties
+            );
 
-        Consumer<String, String> consumer =
-            consumerFactory.createConsumer();
+        try (
+            Consumer<String, String> consumer =
+                consumerFactory.createConsumer()
+        ) {
 
-        try {
             consumer.subscribe(
                 List.of(KafkaTopics.ANALYSIS_REQUEST)
             );
@@ -91,16 +95,23 @@ class AnalysisEventProducerTest {
             long deadline =
                 System.currentTimeMillis() + 10_000;
 
-            while (record == null &&
-                System.currentTimeMillis() < deadline) {
+            while (
+                record == null
+                    && System.currentTimeMillis() < deadline
+            ) {
 
                 var records =
                     consumer.poll(Duration.ofMillis(500));
 
-                for (ConsumerRecord<String, String> current : records) {
+                for (
+                    ConsumerRecord<String, String> current : records
+                ) {
 
-                    if (KafkaTopics.ANALYSIS_REQUEST.equals(
-                        current.topic())) {
+                    if (
+                        KafkaTopics.ANALYSIS_REQUEST.equals(
+                            current.topic()
+                        )
+                    ) {
 
                         record = current;
                         break;
@@ -119,12 +130,16 @@ class AnalysisEventProducerTest {
 
             assertEquals(
                 "ANALYZE_PULL_REQUEST",
-                envelope.get("eventType").asText()
+                envelope
+                    .get("eventType")
+                    .asText()
             );
 
             assertEquals(
                 correlationId,
-                envelope.get("correlationId").asText()
+                envelope
+                    .get("correlationId")
+                    .asText()
             );
 
             assertNotNull(
@@ -142,21 +157,24 @@ class AnalysisEventProducerTest {
 
             assertEquals(
                 "StoryThreads",
-                payload.get("owner").asText()
+                payload
+                    .get("owner")
+                    .asText()
             );
 
             assertEquals(
                 "releaseguard",
-                payload.get("repository").asText()
+                payload
+                    .get("repository")
+                    .asText()
             );
 
             assertEquals(
                 1L,
-                payload.get("pullRequestNumber").asLong()
+                payload
+                    .get("pullRequestNumber")
+                    .asLong()
             );
-
-        } finally {
-            consumer.close();
         }
     }
 }

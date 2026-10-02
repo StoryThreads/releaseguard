@@ -62,34 +62,48 @@ public class SourceService {
     @Transactional(readOnly = true)
     public List<Source> getSourcesByProject(Long projectId) {
 
-        // Verify that the project exists.
         projectService.getProject(projectId);
 
         return sourceRepository.findByProjectId(projectId);
     }
 
     @Transactional(readOnly = true)
-    public Source getGitHubSource(String repositoryOwner, String repositoryName) {
+    public Source getGitHubSource(
+        Long projectId,
+        String repositoryOwner,
+        String repositoryName
+    ) {
+
+        projectService.getProject(projectId);
 
         List<Source> sources =
-            sourceRepository.findByProviderIgnoreCaseAndRepositoryOwnerIgnoreCaseAndRepositoryNameIgnoreCase(
-                "github",
-                repositoryOwner,
-                repositoryName
-            );
+            sourceRepository
+                .findByProjectIdAndProviderIgnoreCaseAndRepositoryOwnerIgnoreCaseAndRepositoryNameIgnoreCase(
+                    projectId,
+                    "github",
+                    repositoryOwner,
+                    repositoryName
+                );
 
         if (sources.isEmpty()) {
             throw new ResourceNotFoundException(
-                "GitHub source not found for repository: "
-                    + repositoryOwner + "/" + repositoryName
+                "GitHub source not found for project "
+                    + projectId
+                    + " and repository: "
+                    + repositoryOwner
+                    + "/"
+                    + repositoryName
             );
         }
 
         if (sources.size() > 1) {
             throw new ConflictException(
-                "Multiple GitHub sources found for repository: "
-                    + repositoryOwner + "/" + repositoryName
-                    + ". Repository analysis is ambiguous."
+                "Multiple GitHub sources found for project "
+                    + projectId
+                    + " and repository: "
+                    + repositoryOwner
+                    + "/"
+                    + repositoryName
             );
         }
 

@@ -46,6 +46,7 @@ class DatasetConfig:
 
 
 
+
 @dataclass(frozen=True)
 class DatasetRecord:
     """
@@ -94,3 +95,4 @@ class DatasetRecord:
             "risk_level": self.risk_level,
             "outcomes": self.outcomes,
         }
+        
