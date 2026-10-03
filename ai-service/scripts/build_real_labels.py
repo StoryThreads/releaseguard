@@ -222,55 +222,70 @@ def determine_outcome_label(
         if isinstance(signal, dict)
     ]
 
-    if not valid_signals:
+    pull_request = record.get("pull_request", {})
+    pr_title = (pull_request.get("title") or "").strip().lower()
+    is_revert_pr = (
+        pr_title.startswith("revert ")
+        or pr_title.startswith("revert:")
+        or pr_title.startswith("reverted ")
+        or "revert" in pr_title.split()
+    )
+
+    if not valid_signals and not is_revert_pr:
         return (
             "LOW",
             "No qualifying post-merge defect signal was observed.",
         )
 
-    strongest_rank = max(
-        (
-            signal_strength_rank(signal)
-            for signal in valid_signals
-        ),
-        default=0,
+    # 1. CRITICAL: A change that caused a severe post-merge defect requiring an explicit revert commit or defect issue
+    has_post_revert = any(
+        s.get("signal_type") in ("explicit_revert_commit", "post_merge_defect_issue")
+        for s in valid_signals
     )
-
-    if strongest_rank >= 3:
+    if not is_revert_pr and has_post_revert:
         return (
             "CRITICAL",
             (
-                "At least one strong post-merge defect "
-                "signal was observed."
+                "This change caused a post-merge defect requiring an "
+                "explicit revert or post-merge defect issue."
             ),
         )
 
-    if strongest_rank == 2:
+    # 2. HIGH: Revert / rollback pull requests or moderate defect follow-up PRs
+    has_high_signal = any(
+        s.get("signal_type") in ("revert_pull_request", "post_merge_followup_pr")
+        or s.get("strength") == "moderate"
+        for s in valid_signals
+    )
+    if is_revert_pr or has_high_signal:
         return (
             "HIGH",
             (
-                "At least one moderate post-merge defect "
-                "signal was observed and no strong signal "
-                "was observed."
+                "Change is an explicit revert/rollback PR or has "
+                "moderate defect follow-up evidence."
             ),
         )
 
-    if strongest_rank == 1:
+    # 3. MEDIUM: Post-merge defect discussions / regressions
+    has_medium_signal = any(
+        s.get("signal_type") == "post_merge_defect_discussion"
+        or s.get("strength") == "weak"
+        for s in valid_signals
+    )
+    if has_medium_signal:
         return (
             "MEDIUM",
             (
-                "Only weak post-merge defect evidence was "
-                "observed."
+                "Post-merge discussion reports a regression or defect "
+                "behavior caused by this change."
             ),
         )
 
     return (
         "LOW",
-        (
-            "Signals were present but none had a recognized "
-            "defect-evidence strength."
-        ),
+        "Signals were present but none had a recognized defect-evidence strength.",
     )
+
 
 
 # ============================================================
