@@ -3,6 +3,22 @@ import type { FC } from 'react';
 import { Zap, Send, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
 
+interface WebhookSimulationResult {
+  status: number;
+  data: {
+    status?: string;
+    message?: string;
+    correlationId?: string;
+    analysisResponse?: {
+      prediction?: {
+        riskLevel: string;
+        riskScore: number;
+      };
+    };
+    [key: string]: unknown;
+  };
+}
+
 export const WebhookSimulator: FC = () => {
   const [owner, setOwner] = useState('facebook');
   const [repo, setRepo] = useState('react');
@@ -10,11 +26,11 @@ export const WebhookSimulator: FC = () => {
   const [action, setAction] = useState('opened');
   const [title, setTitle] = useState('Fix concurrent mode fiber node memory leak on unmount');
   const [author, setAuthor] = useState('acdlite');
-  const [deliveryId, setDeliveryId] = useState('deliv-' + Math.random().toString(36).substring(2, 10));
+  const [deliveryId, setDeliveryId] = useState(() => 'deliv-' + Math.random().toString(36).substring(2, 10));
   const [signatureMode, setSignatureMode] = useState<'VALID' | 'INVALID' | 'NONE'>('VALID');
 
   const [sending, setSending] = useState(false);
-  const [response, setResponse] = useState<any>(null);
+  const [response, setResponse] = useState<WebhookSimulationResult | null>(null);
 
   const regenerateDeliveryId = () => {
     setDeliveryId('deliv-' + Math.random().toString(36).substring(2, 10));
@@ -43,10 +59,25 @@ export const WebhookSimulator: FC = () => {
       sender: { login: author },
     };
 
+    const payloadString = JSON.stringify(payload);
     let signature: string | undefined;
+
     if (signatureMode === 'VALID') {
-      // In production/local, backend default secret is releaseguard-webhook-secret-dev
-      signature = 'sha256=VALID_MOCK_SIGNATURE';
+      try {
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          'raw',
+          enc.encode('releaseguard-webhook-secret-dev'),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign']
+        );
+        const signatureBuf = await crypto.subtle.sign('HMAC', key, enc.encode(payloadString));
+        const hashArray = Array.from(new Uint8Array(signatureBuf));
+        signature = 'sha256=' + hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+      } catch (err) {
+        console.error('Error computing HMAC signature:', err);
+      }
     } else if (signatureMode === 'INVALID') {
       signature = 'sha256=bad_signature_deadbeef123456';
     }
@@ -54,10 +85,11 @@ export const WebhookSimulator: FC = () => {
     try {
       const res = await api.sendGitHubWebhook(payload, signature, deliveryId);
       setResponse(res);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Network error sending webhook';
       setResponse({
         status: 500,
-        data: { error: e?.message || 'Network error sending webhook' },
+        data: { error: msg },
       });
     } finally {
       setSending(false);

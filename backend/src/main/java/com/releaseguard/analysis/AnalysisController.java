@@ -19,13 +19,28 @@ public class AnalysisController {
 
     private final AnalysisService analysisService;
     private final AnalyzerEngine analyzerEngine;
+    private final com.releaseguard.github.GitHubRestAdapter githubRestAdapter;
 
     public AnalysisController(
         AnalysisService analysisService,
-        AnalyzerEngine analyzerEngine
+        AnalyzerEngine analyzerEngine,
+        com.releaseguard.github.GitHubRestAdapter githubRestAdapter
     ) {
         this.analysisService = analysisService;
         this.analyzerEngine = analyzerEngine;
+        this.githubRestAdapter = githubRestAdapter;
+    }
+
+    @GetMapping("/github/pulls")
+    public ResponseEntity<List<com.releaseguard.github.dto.GitHubPullRequestResponse>> getGitHubPullRequests(
+        @RequestParam String owner,
+        @RequestParam String repo,
+        @RequestParam(required = false, defaultValue = "open") String state,
+        @RequestParam(required = false, defaultValue = "10") int limit
+    ) {
+        return ResponseEntity.ok(
+            githubRestAdapter.getRecentPullRequests(owner, repo, state, limit)
+        );
     }
 
     @PostMapping("/pr")

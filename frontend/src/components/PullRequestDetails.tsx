@@ -32,10 +32,6 @@ export const PullRequestDetails: FC<PullRequestDetailsProps> = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'findings' | 'files' | 'features'>('findings');
 
-  useEffect(() => {
-    loadDetails();
-  }, [changeId]);
-
   const loadDetails = async () => {
     setLoading(true);
     try {
@@ -47,6 +43,10 @@ export const PullRequestDetails: FC<PullRequestDetailsProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadDetails();
+  }, [changeId]);
 
   if (loading || !details) {
     return (

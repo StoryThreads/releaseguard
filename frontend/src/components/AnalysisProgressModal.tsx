@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FC } from 'react';
-import { X, Play, Loader2, CheckCircle2, AlertTriangle, Cpu } from 'lucide-react';
-import { api } from '../services/api';
+import { X, Play, Loader2, CheckCircle2, AlertTriangle, Cpu, GitPullRequest, Search } from 'lucide-react';
+import { api, type GitHubPullRequestItem } from '../services/api';
 import type { Project, Source, RiskLevel } from '../types';
 import { RiskBadge } from './RiskBadge';
 
@@ -20,9 +20,15 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
   defaultSource,
   onAnalysisCompleted,
 }) => {
-  const [owner, setOwner] = useState(defaultSource?.repositoryOwner || defaultProject?.name.split('/')[0] || 'facebook');
-  const [repo, setRepo] = useState(defaultSource?.repositoryName || defaultProject?.name.split('/')[1] || 'react');
-  const [prNumber, setPrNumber] = useState<number>(37613);
+  const [urlInput, setUrlInput] = useState('');
+  const [owner, setOwner] = useState(() => defaultSource?.repositoryOwner || defaultProject?.name.split('/')[0] || '');
+  const [repo, setRepo] = useState(() => defaultSource?.repositoryName || defaultProject?.name.split('/')[1] || '');
+  const [prNumber, setPrNumber] = useState<number | ''>('');
+
+  // GitHub PR Discovery
+  const [fetchingPrs, setFetchingPrs] = useState(false);
+  const [fetchedPrs, setFetchedPrs] = useState<GitHubPullRequestItem[]>([]);
+  const [fetchPrError, setFetchPrError] = useState<string | null>(null);
 
   // Execution states: 'IDLE' | 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
   const [status, setStatus] = useState<'IDLE' | 'QUEUED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'>('IDLE');
@@ -36,54 +42,106 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Helper to parse github url
+  const handleUrlChange = (value: string) => {
+    setUrlInput(value);
+    const trimmed = value.trim();
+    // Matches https://github.com/owner/repo/pull/123 or github.com/owner/repo/pull/123
+    const prMatch = trimmed.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/i);
+    if (prMatch) {
+      setOwner(prMatch[1]);
+      setRepo(prMatch[2]);
+      setPrNumber(Number(prMatch[3]));
+      return;
+    }
+    // Matches owner/repo#123
+    const shortMatch = trimmed.match(/^([^/\s]+)\/([^#\s]+)#(\d+)$/);
+    if (shortMatch) {
+      setOwner(shortMatch[1]);
+      setRepo(shortMatch[2]);
+      setPrNumber(Number(shortMatch[3]));
+      return;
+    }
+    // Matches owner/repo
+    const repoMatch = trimmed.match(/^([^/\s]+)\/([^/\s]+)$/);
+    if (repoMatch) {
+      setOwner(repoMatch[1]);
+      setRepo(repoMatch[2]);
+    }
+  };
+
+  const handleFetchRecentPrs = async () => {
+    if (!owner.trim() || !repo.trim()) {
+      setFetchPrError('Please enter owner and repository name first.');
+      return;
+    }
+    setFetchingPrs(true);
+    setFetchPrError(null);
+    try {
+      const prs = await api.getGitHubPullRequests(owner.trim(), repo.trim(), 'all', 8);
+      setFetchedPrs(prs);
+      if (prs.length === 0) {
+        setFetchPrError(`No recent pull requests found for ${owner}/${repo}`);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not fetch pull requests from GitHub';
+      setFetchPrError(msg);
+    } finally {
+      setFetchingPrs(false);
+    }
+  };
+
   const startAnalysis = async () => {
+    if (!owner.trim() || !repo.trim() || !prNumber) {
+      setErrorMessage('Owner, repository name, and PR number are all required.');
+      return;
+    }
+
     setStatus('QUEUED');
     const corrId = 'corr-' + Math.random().toString(36).substring(2, 10);
     setCorrelationId(corrId);
-    setCurrentStep('Publishing request to Kafka topic releaseguard.analysis.request...');
+    setCurrentStep('Dispatching analysis request to ReleaseGuard pipeline...');
+    setErrorMessage(null);
+
+    const step1 = setTimeout(() => {
+      setStatus('IN_PROGRESS');
+      setCurrentStep('Fetching PR diff & change snapshot from GitHub API...');
+    }, 600);
+
+    const step2 = setTimeout(() => {
+      setCurrentStep('Running Static Analyzers (AST, Concurrency, Security rules)...');
+    }, 1200);
+
+    const step3 = setTimeout(() => {
+      setCurrentStep('Extracting 28 normalized features & executing ML inference...');
+    }, 1800);
 
     try {
-      // Progressive simulation steps for real-time visual tracking
-      setTimeout(() => {
-        setStatus('IN_PROGRESS');
-        setCurrentStep('Fetching PR diff & building ChangeSnapshot from GitHub...');
-      }, 1200);
-
-      setTimeout(() => {
-        setCurrentStep('Running Static Analyzers (Concurrency, Security, Heuristics)...');
-      }, 2400);
-
-      setTimeout(() => {
-        setCurrentStep('Extracting 28 normalized features & executing XGBoost v2.0.0...');
-      }, 3600);
-
-      // Trigger API
       const res = await api.triggerAnalysis(
-        defaultProject?.id || 1,
-        owner,
-        repo,
-        prNumber
+        defaultProject?.id,
+        owner.trim(),
+        repo.trim(),
+        Number(prNumber)
       );
 
-      setTimeout(() => {
-        setStatus('COMPLETED');
-        setCurrentStep('Analysis persisted and finalized.');
-        const changeId = res.changeId || 201;
-        setCompletedChangeId(changeId);
-        setResultRisk(res.prediction?.riskLevel || 'CRITICAL');
-        setResultScore(res.prediction?.riskScore || 0.94);
-        setResultFindingsCount(res.findings?.length || 3);
-      }, 4800);
-    } catch (err: any) {
-      // Graceful fallback for mock PRs
-      setTimeout(() => {
-        setStatus('COMPLETED');
-        setCurrentStep('Analysis persisted and finalized (Offline Engine).');
-        setCompletedChangeId(201);
-        setResultRisk('CRITICAL');
-        setResultScore(0.94);
-        setResultFindingsCount(3);
-      }, 4800);
+      clearTimeout(step1);
+      clearTimeout(step2);
+      clearTimeout(step3);
+
+      setStatus('COMPLETED');
+      setCurrentStep('Analysis persisted and finalized.');
+      setCompletedChangeId(res.changeId);
+      const riskInfo = res.riskAnalysis || res.prediction;
+      setResultRisk((riskInfo?.riskLevel as RiskLevel) || 'LOW');
+      setResultScore(riskInfo?.riskScore || 0);
+      setResultFindingsCount(res.findings?.length || 0);
+    } catch (err: unknown) {
+      clearTimeout(step1);
+      clearTimeout(step2);
+      clearTimeout(step3);
+      setStatus('FAILED');
+      const msg = err instanceof Error ? err.message : 'Analysis failed. Please verify the repository and PR number.';
+      setErrorMessage(msg);
     }
   };
 
@@ -91,6 +149,7 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
     setStatus('IDLE');
     setCurrentStep('');
     setErrorMessage(null);
+    setCompletedChangeId(null);
   };
 
   return (
@@ -112,6 +171,8 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
         style={{
           width: '100%',
           maxWidth: '560px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           padding: '28px',
           display: 'flex',
           flexDirection: 'column',
@@ -120,12 +181,12 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
                 backgroundColor: 'rgba(99, 102, 241, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
@@ -133,12 +194,12 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
                 color: '#818cf8',
               }}
             >
-              <Cpu size={20} />
+              <Cpu size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Pull Request Risk Analysis</h3>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Analyze Pull Request</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Automated Static Analysis & XGBoost 2.0.0 Prediction
+                Target any GitHub repository for real-time defect risk prediction
               </p>
             </div>
           </div>
@@ -153,13 +214,37 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
         {/* Input Form (shown when IDLE) */}
         {status === 'IDLE' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Quick URL paste */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                Quick Import: GitHub PR URL or Repo
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. https://github.com/facebook/react/pull/31644 or owner/repo#123"
+                value={urlInput}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.88rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  Repository Owner
+                  Repository Owner *
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. facebook, StoryThreads, pallets"
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
                   style={{
@@ -176,10 +261,11 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  Repository Name
+                  Repository Name *
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. react, releaseguard, flask"
                   value={repo}
                   onChange={(e) => setRepo(e.target.value)}
                   style={{
@@ -197,13 +283,26 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                Pull Request # Number
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Pull Request # Number *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleFetchRecentPrs}
+                  disabled={fetchingPrs || !owner.trim() || !repo.trim()}
+                  className="btn btn-secondary"
+                  style={{ padding: '3px 8px', fontSize: '0.75rem', gap: '4px' }}
+                >
+                  {fetchingPrs ? <Loader2 size={12} className="spin" /> : <Search size={12} />}
+                  Browse Live PRs
+                </button>
+              </div>
               <input
                 type="number"
+                placeholder="e.g. 1"
                 value={prNumber}
-                onChange={(e) => setPrNumber(Number(e.target.value))}
+                onChange={(e) => setPrNumber(e.target.value === '' ? '' : Number(e.target.value))}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -217,74 +316,123 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
               />
             </div>
 
+            {fetchPrError && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--risk-critical)' }}>
+                {fetchPrError}
+              </div>
+            )}
+
+            {/* List of fetched PRs if available */}
+            {fetchedPrs.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  maxHeight: '160px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  Select a live PR from {owner}/{repo}:
+                </div>
+                {fetchedPrs.map((pr: GitHubPullRequestItem) => (
+                  <div
+                    key={pr.number}
+                    onClick={() => setPrNumber(pr.number)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      backgroundColor: prNumber === pr.number ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                      border: prNumber === pr.number ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <GitPullRequest size={14} color="#818cf8" />
+                      <strong style={{ fontFamily: 'var(--font-mono)' }}>#{pr.number}</strong>
+                      <span style={{ color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.title}</span>
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      @{pr.user?.login || 'user'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {errorMessage && (
+              <div style={{ color: 'var(--risk-critical)', fontSize: '0.85rem' }}>
+                {errorMessage}
+              </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
               <button className="btn btn-secondary" onClick={onClose}>
                 Cancel
               </button>
-              <button className="btn btn-primary" onClick={startAnalysis}>
-                <Play size={14} fill="#fff" /> Start Automated Pipeline
+              <button
+                className="btn btn-primary"
+                onClick={startAnalysis}
+                disabled={!owner.trim() || !repo.trim() || !prNumber}
+              >
+                <Play size={16} /> Run Analysis
               </button>
             </div>
           </div>
         )}
 
-        {/* Progress Tracker (QUEUED / IN_PROGRESS) */}
+        {/* Progress Display */}
         {(status === 'QUEUED' || status === 'IN_PROGRESS') && (
-          <div
-            style={{
-              padding: '24px',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '12px',
-              border: '1px solid var(--border-subtle)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '12px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Loader2 size={24} className="spinning" color="#818cf8" />
+              <Loader2 size={24} className="spin" color="#818cf8" />
               <div>
-                <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>
-                  {status === 'QUEUED' ? 'Queued in Analysis Topic' : 'Analysis In Progress'}
+                <div style={{ fontWeight: 600, fontSize: '1rem' }}>
+                  {status === 'QUEUED' ? 'Analysis Queued...' : 'Analysis in Progress...'}
                 </div>
-                <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>
-                  Correlation ID: {correlationId}
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Tracking ID: {correlationId}
                 </div>
               </div>
             </div>
 
             <div
               style={{
-                padding: '12px 14px',
+                padding: '16px',
                 borderRadius: '8px',
-                backgroundColor: 'var(--bg-canvas)',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
                 border: '1px solid var(--border-subtle)',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '0.82rem',
-                color: '#818cf8',
+                fontSize: '0.85rem',
+                color: '#a5b4fc',
               }}
             >
               {currentStep}
             </div>
 
-            {/* Stepper indicator */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '4px' }}>
-              <div style={{ height: '4px', borderRadius: '2px', backgroundColor: '#818cf8' }} />
-              <div
-                style={{
-                  height: '4px',
-                  borderRadius: '2px',
-                  backgroundColor: status === 'IN_PROGRESS' ? '#818cf8' : 'rgba(255, 255, 255, 0.1)',
-                }}
-              />
-              <div
-                style={{
-                  height: '4px',
-                  borderRadius: '2px',
-                  backgroundColor: currentStep.includes('features') ? '#818cf8' : 'rgba(255, 255, 255, 0.1)',
-                }}
-              />
-              <div style={{ height: '4px', borderRadius: '2px', backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />
+            {/* Stepper */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                <CheckCircle2 size={16} color="var(--risk-low)" />
+                <span>Kafka request event dispatched</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                <CheckCircle2 size={16} color="var(--risk-low)" />
+                <span>GitHub pull request snapshot extracted</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                <Loader2 size={16} className="spin" color="#818cf8" />
+                <span>Running analyzers & ML model inference...</span>
+              </div>
             </div>
           </div>
         )}
@@ -293,10 +441,10 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
         {status === 'COMPLETED' && (
           <div
             style={{
-              padding: '24px',
-              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              padding: '20px',
               borderRadius: '12px',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',
@@ -304,7 +452,7 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--risk-low)' }}>
               <CheckCircle2 size={24} />
-              <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>Analysis Pipeline Completed</span>
+              <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>Real Analysis Completed</span>
             </div>
 
             <div
@@ -350,10 +498,10 @@ export const AnalysisProgressModal: FC<AnalysisProgressModalProps> = ({
           </div>
         )}
 
+        {/* Failed State */}
         {status === 'FAILED' && (
           <div
             style={{
-              marginTop: '24px',
               padding: '20px',
               borderRadius: '12px',
               backgroundColor: 'rgba(239, 68, 68, 0.08)',

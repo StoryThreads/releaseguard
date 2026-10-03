@@ -45,7 +45,7 @@ management:
         include: health,info
 
 github:
-  token: ${GITHUB_TOKEN}
+  token: ${GITHUB_TOKEN:}
   api-url: ${GITHUB_API_URL:https://api.github.com}
 
 releaseguard:

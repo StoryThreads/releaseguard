@@ -9,12 +9,14 @@ interface ProjectListProps {
   onSelectProject: (projectId: number) => void;
   onOpenSourceModal: (project: Project) => void;
   onBrowsePullRequests: (projectId?: number) => void;
+  onOpenAnalysisModal?: () => void;
 }
 
 export const ProjectList: FC<ProjectListProps> = ({
   onSelectProject,
   onOpenSourceModal,
   onBrowsePullRequests,
+  onOpenAnalysisModal,
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [summaries, setSummaries] = useState<Record<number, ProjectSummary>>({});
@@ -23,10 +25,6 @@ export const ProjectList: FC<ProjectListProps> = ({
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
 
   const loadProjects = async () => {
     setLoading(true);
@@ -39,7 +37,9 @@ export const ProjectList: FC<ProjectListProps> = ({
       for (const p of data) {
         try {
           const sum = await api.getProjectSummary(p.id);
-          summaryMap[p.id] = sum;
+          if (sum) {
+            summaryMap[p.id] = sum;
+          }
         } catch {
           // Ignore
         }
@@ -51,6 +51,10 @@ export const ProjectList: FC<ProjectListProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +176,38 @@ export const ProjectList: FC<ProjectListProps> = ({
         {loading ? (
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
             Loading ReleaseGuard projects...
+          </div>
+        ) : projects.length === 0 ? (
+          <div
+            className="glass-panel"
+            style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+            }}
+          >
+            <FolderGit2 size={48} color="#818cf8" style={{ opacity: 0.6 }} />
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '6px' }}>
+                No Projects Monitored Yet
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '460px' }}>
+                Analyze any GitHub repository pull request directly, or register a new project workspace.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              {onOpenAnalysisModal && (
+                <button className="btn btn-primary" onClick={onOpenAnalysisModal}>
+                  <GitPullRequest size={16} /> Analyze Any GitHub Repo
+                </button>
+              )}
+              <button className="btn btn-secondary" onClick={() => setIsCreateModalOpen(true)}>
+                <Plus size={16} /> Create Project
+              </button>
+            </div>
           </div>
         ) : (
           <div

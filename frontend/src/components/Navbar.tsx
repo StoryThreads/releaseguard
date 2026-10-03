@@ -2,8 +2,8 @@ import React from 'react';
 import { Shield, GitPullRequest, FolderGit2, Zap, Play } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: string;
-  onSelectTab: (tab: string) => void;
+  currentTab: 'projects' | 'pull-requests' | 'webhooks';
+  onSelectTab: (tab: 'projects' | 'pull-requests' | 'webhooks') => void;
   onOpenAnalysisModal: () => void;
 }
 

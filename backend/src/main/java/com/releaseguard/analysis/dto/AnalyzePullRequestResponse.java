@@ -69,9 +69,19 @@ public class AnalyzePullRequestResponse {
         return riskAnalysis;
     }
 
+    public MlPredictionResponse getPrediction() {
+        return riskAnalysis;
+    }
+
     public void setRiskAnalysis(
         MlPredictionResponse riskAnalysis
     ) {
         this.riskAnalysis = riskAnalysis;
+    }
+
+    public void setPrediction(
+        MlPredictionResponse prediction
+    ) {
+        this.riskAnalysis = prediction;
     }
 }

@@ -44,8 +44,9 @@ export const SourceConfigModal: FC<SourceConfigModalProps> = ({
       );
       onSourceAdded(source);
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to configure repository source.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to configure repository source.';
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }

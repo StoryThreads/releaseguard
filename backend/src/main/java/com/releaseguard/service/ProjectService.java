@@ -50,4 +50,14 @@ public class ProjectService {
                 )
             );
     }
+
+    public Project getOrCreateProject(String name, String description) {
+        return projectRepository.findByName(name)
+            .orElseGet(() -> {
+                Project p = new Project();
+                p.setName(name);
+                p.setDescription(description != null ? description : "GitHub repository " + name);
+                return projectRepository.save(p);
+            });
+    }
 }

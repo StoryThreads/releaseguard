@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import type { ChangeAnalysisDetails, Project } from '../types';
 import { api } from '../services/api';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, Play, GitPullRequest } from 'lucide-react';
 import { RiskBadge } from './RiskBadge';
 
 interface PullRequestListProps {
   onSelectChange: (changeId: number) => void;
   selectedProjectId?: number;
+  onOpenAnalysisModal?: () => void;
 }
 
 export const PullRequestList: FC<PullRequestListProps> = ({
   onSelectChange,
   selectedProjectId,
+  onOpenAnalysisModal,
 }) => {
   const [changes, setChanges] = useState<ChangeAnalysisDetails[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -22,10 +24,6 @@ export const PullRequestList: FC<PullRequestListProps> = ({
   const [filterProject, setFilterProject] = useState<string>(
     selectedProjectId ? String(selectedProjectId) : 'ALL'
   );
-
-  useEffect(() => {
-    loadData();
-  }, [selectedProjectId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -42,6 +40,10 @@ export const PullRequestList: FC<PullRequestListProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedProjectId]);
 
   const filteredChanges = changes.filter((item) => {
     if (filterRisk !== 'ALL' && item.prediction?.riskLevel !== filterRisk) return false;
@@ -175,8 +177,32 @@ export const PullRequestList: FC<PullRequestListProps> = ({
             Loading pull requests...
           </div>
         ) : filteredChanges.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-            No pull requests match the selected filters.
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '48px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '14px',
+            }}
+          >
+            <GitPullRequest size={42} color="#818cf8" style={{ opacity: 0.6 }} />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: '4px' }}>
+                {changes.length === 0 ? 'No Pull Requests Analyzed Yet' : 'No Pull Requests Match Filters'}
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px' }}>
+                {changes.length === 0
+                  ? 'Analyze any repository pull request directly to compute risk scores and detect defects.'
+                  : 'Try adjusting your search query, project filter, or risk level filter.'}
+              </div>
+            </div>
+            {changes.length === 0 && onOpenAnalysisModal && (
+              <button className="btn btn-primary" onClick={onOpenAnalysisModal} style={{ marginTop: '6px' }}>
+                <Play size={14} /> Analyze Pull Request
+              </button>
+            )}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>

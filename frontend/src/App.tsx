@@ -44,7 +44,7 @@ export function App() {
       <Navbar
         currentTab={currentTab}
         onSelectTab={(tab) => {
-          setCurrentTab(tab as any);
+          setCurrentTab(tab);
           if (tab === 'projects') setSelectedProjectId(null);
           if (tab === 'pull-requests') setSelectedChangeId(null);
         }}
@@ -75,6 +75,7 @@ export function App() {
                   setSelectedProjectId(projectId || null);
                   setCurrentTab('pull-requests');
                 }}
+                onOpenAnalysisModal={() => handleOpenAnalysisModal()}
               />
             )}
           </>
@@ -92,6 +93,7 @@ export function App() {
               <PullRequestList
                 selectedProjectId={selectedProjectId || undefined}
                 onSelectChange={(changeId) => setSelectedChangeId(changeId)}
+                onOpenAnalysisModal={() => handleOpenAnalysisModal()}
               />
             )}
           </>

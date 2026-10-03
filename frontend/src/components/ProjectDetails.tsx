@@ -26,10 +26,6 @@ export const ProjectDetails: FC<ProjectDetailsProps> = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'history' | 'sources'>('history');
 
-  useEffect(() => {
-    loadData();
-  }, [projectId]);
-
   const loadData = async () => {
     setLoading(true);
     try {
@@ -37,7 +33,7 @@ export const ProjectDetails: FC<ProjectDetailsProps> = ({
         api.getProjectSummary(projectId),
         api.getProjectSources(projectId),
       ]);
-      setSummary(sum);
+      setSummary(sum || null);
       setSources(srcList);
     } catch (e) {
       console.error(e);
@@ -45,6 +41,10 @@ export const ProjectDetails: FC<ProjectDetailsProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [projectId]);
 
   if (loading || !summary) {
     return (

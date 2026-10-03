@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotNull;
 
 public class AnalyzePullRequestRequest {
 
-    @NotNull
-    @Min(1)
     private Long projectId;
 
     @NotBlank

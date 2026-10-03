@@ -110,6 +110,41 @@ public class SourceService {
         return sources.get(0);
     }
 
+    public Source getOrCreateGitHubSource(
+        Long projectId,
+        String repositoryOwner,
+        String repositoryName
+    ) {
+        Project project;
+        if (projectId != null && projectId > 0) {
+            project = projectService.getProject(projectId);
+        } else {
+            String fullName = repositoryOwner + "/" + repositoryName;
+            project = projectService.getOrCreateProject(fullName, "GitHub repository: " + fullName);
+        }
+
+        List<Source> sources =
+            sourceRepository
+                .findByProjectIdAndProviderIgnoreCaseAndRepositoryOwnerIgnoreCaseAndRepositoryNameIgnoreCase(
+                    project.getId(),
+                    "github",
+                    repositoryOwner,
+                    repositoryName
+                );
+
+        if (!sources.isEmpty()) {
+            return sources.get(0);
+        }
+
+        Source newSource = new Source();
+        newSource.setProject(project);
+        newSource.setProvider("GITHUB");
+        newSource.setRepositoryOwner(repositoryOwner);
+        newSource.setRepositoryName(repositoryName);
+        newSource.setDefaultBranch("main");
+        return sourceRepository.save(newSource);
+    }
+
     @Transactional(readOnly = true)
     public Source getSource(Long id) {
 

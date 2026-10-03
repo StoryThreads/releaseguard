@@ -33,6 +33,7 @@ public class DashboardService {
     private final FindingRepository findingRepository;
     private final MlPredictionRepository mlPredictionRepository;
     private final ObjectMapper objectMapper;
+    private final com.releaseguard.github.GitHubRestAdapter gitHubRestAdapter;
 
     public DashboardService(
         ProjectRepository projectRepository,
@@ -40,7 +41,9 @@ public class DashboardService {
         ChangeRepository changeRepository,
         FindingRepository findingRepository,
         MlPredictionRepository mlPredictionRepository,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        @org.springframework.beans.factory.annotation.Autowired(required = false)
+        com.releaseguard.github.GitHubRestAdapter gitHubRestAdapter
     ) {
         this.projectRepository = projectRepository;
         this.sourceRepository = sourceRepository;
@@ -48,13 +51,15 @@ public class DashboardService {
         this.findingRepository = findingRepository;
         this.mlPredictionRepository = mlPredictionRepository;
         this.objectMapper = objectMapper;
+        this.gitHubRestAdapter = gitHubRestAdapter;
     }
 
     public ChangeAnalysisDetailsResponse getChangeAnalysisDetails(Long changeId) {
         Change change = changeRepository.findById(changeId)
             .orElseThrow(() -> new ResourceNotFoundException("Change not found with id: " + changeId));
 
-        return buildChangeAnalysisDetails(change);
+        List<com.releaseguard.dto.analysis.ChangedFileResponse> files = fetchChangedFiles(change);
+        return buildChangeAnalysisDetails(change, files);
     }
 
     public List<ChangeAnalysisDetailsResponse> getRecentChanges(int limit) {
@@ -161,6 +166,13 @@ public class DashboardService {
     }
 
     private ChangeAnalysisDetailsResponse buildChangeAnalysisDetails(Change change) {
+        return buildChangeAnalysisDetails(change, List.of());
+    }
+
+    private ChangeAnalysisDetailsResponse buildChangeAnalysisDetails(
+        Change change,
+        List<com.releaseguard.dto.analysis.ChangedFileResponse> files
+    ) {
         ChangeResponse changeResponse = new ChangeResponse(
             change.getId(),
             change.getSource().getId(),
@@ -232,8 +244,53 @@ public class DashboardService {
             sourceResponse,
             predictionResponse,
             findings,
-            severityCounts
+            severityCounts,
+            files
         );
+    }
+
+    private List<com.releaseguard.dto.analysis.ChangedFileResponse> fetchChangedFiles(Change change) {
+        if (gitHubRestAdapter == null || change == null || change.getSource() == null) {
+            return List.of();
+        }
+        Source source = change.getSource();
+        if (!"GITHUB".equalsIgnoreCase(source.getProvider())) {
+            return List.of();
+        }
+        try {
+            long prNumber = Long.parseLong(change.getExternalChangeId());
+            var ghFiles = gitHubRestAdapter.getPullRequestFiles(
+                source.getRepositoryOwner(),
+                source.getRepositoryName(),
+                prNumber
+            );
+            if (ghFiles == null || ghFiles.isEmpty()) {
+                return List.of();
+            }
+            List<com.releaseguard.dto.analysis.ChangedFileResponse> result = new ArrayList<>();
+            for (var f : ghFiles) {
+                List<String> tags = new ArrayList<>();
+                String fn = f.getFilename() != null ? f.getFilename().toLowerCase() : "";
+                if (fn.contains("test")) tags.add("TEST");
+                if (fn.endsWith(".md") || fn.contains("doc")) tags.add("DOCS");
+                if (fn.endsWith(".yml") || fn.endsWith(".yaml") || fn.endsWith(".json") || fn.endsWith(".properties")) tags.add("CONFIG");
+                if (f.getChanges() > 100) tags.add("HIGH-CHURN");
+
+                result.add(new com.releaseguard.dto.analysis.ChangedFileResponse(
+                    f.getFilename(),
+                    f.getStatus(),
+                    f.getAdditions(),
+                    f.getDeletions(),
+                    f.getChanges(),
+                    f.getPatch(),
+                    tags
+                ));
+            }
+            return result;
+        } catch (Exception e) {
+            log.debug("Could not fetch changed files from GitHub for change {}: {}", change.getId(), e.getMessage());
+            return List.of();
+        }
     }
 
     private Map<String, Double> parseClassProbabilities(String json) {
