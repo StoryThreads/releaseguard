@@ -42,15 +42,18 @@ POST http://localhost:8000/api/v1/predict
 
 ## Model artifact
 
-The development artifact is:
+The active production artifact is:
 
 ```text
-artifacts/models/xgboost/1.0.0/
+artifacts/models/xgboost/2.0.0/
 ```
 
-It is trained from the same feature-extraction and normalization pipeline used by inference.
+- Model Name: `xgboost`
+- Model Version: `2.0.0`
+- Feature Version: `1.0.0`
+- Dataset Version: `2.0.0`
 
-The current artifact uses deterministic synthetic development data. Its predictions must not be treated as production model performance.
+It is trained from real data using the V0.5.1 feature-extraction and normalization pipeline, promoted via `scripts/promote_real_model.py`. The legacy synthetic development artifact remains archived under `artifacts/models/xgboost/1.0.0/`.
 
 ## Risk score
 

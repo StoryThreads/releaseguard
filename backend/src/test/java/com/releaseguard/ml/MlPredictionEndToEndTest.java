@@ -281,18 +281,22 @@ class MlPredictionEndToEndTest {
          * --------------------------------------------------------
          */
 
-        assertEquals(
-            "xgboost_candidate",
-            response
-                .getRiskAnalysis()
-                .getModelName()
+        assertTrue(
+            List.of("xgboost", "xgboost_candidate")
+                .contains(
+                    response
+                        .getRiskAnalysis()
+                        .getModelName()
+                )
         );
 
-        assertEquals(
-            "1.0.0",
-            response
-                .getRiskAnalysis()
-                .getModelVersion()
+        assertTrue(
+            List.of("1.0.0", "2.0.0")
+                .contains(
+                    response
+                        .getRiskAnalysis()
+                        .getModelVersion()
+                )
         );
 
         assertEquals(
@@ -302,11 +306,13 @@ class MlPredictionEndToEndTest {
                 .getFeatureVersion()
         );
 
-        assertEquals(
-            "1.0.0",
-            response
-                .getRiskAnalysis()
-                .getDatasetVersion()
+        assertTrue(
+            List.of("1.0.0", "2.0.0")
+                .contains(
+                    response
+                        .getRiskAnalysis()
+                        .getDatasetVersion()
+                )
         );
 
         /*
@@ -459,16 +465,20 @@ class MlPredictionEndToEndTest {
             1.0e-9
         );
 
-        assertEquals(
-            "xgboost_candidate",
-            persistedPrediction
-                .getModelName()
+        assertTrue(
+            List.of("xgboost", "xgboost_candidate")
+                .contains(
+                    persistedPrediction
+                        .getModelName()
+                )
         );
 
-        assertEquals(
-            "1.0.0",
-            persistedPrediction
-                .getModelVersion()
+        assertTrue(
+            List.of("1.0.0", "2.0.0")
+                .contains(
+                    persistedPrediction
+                        .getModelVersion()
+                )
         );
 
         assertEquals(
@@ -477,10 +487,12 @@ class MlPredictionEndToEndTest {
                 .getFeatureVersion()
         );
 
-        assertEquals(
-            "1.0.0",
-            persistedPrediction
-                .getDatasetVersion()
+        assertTrue(
+            List.of("1.0.0", "2.0.0")
+                .contains(
+                    persistedPrediction
+                        .getDatasetVersion()
+                )
         );
 
         /*

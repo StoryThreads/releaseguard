@@ -1,0 +1,46 @@
+spring:
+  config:
+    import: optional:file:../.env[.properties]
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:releaseguard-analysis}
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  application:
+    name: releaseguard-backend
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+github:
+  token: ${GITHUB_TOKEN}
+  api-url: ${GITHUB_API_URL:https://api.github.com}
+
+releaseguard:
+  ml-service:
+    url: ${ML_SERVICE_URL:http://localhost:8000}

@@ -30,6 +30,10 @@ class LogisticRegressionPipeline:
             self.scaler.transform(X)
         )
 
+    @property
+    def is_fitted(self) -> bool:
+        return True
+
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         raw_probs = self.model.predict_proba(
             self.scaler.transform(X)
@@ -52,6 +56,10 @@ class XGBoostPipeline:
     ) -> None:
         self.model = model
         self.classes_ = np.asarray(classes, dtype=np.int64)
+
+    @property
+    def is_fitted(self) -> bool:
+        return True
 
     @property
     def classes(self) -> list[str]:

@@ -83,3 +83,10 @@ ai-service/data/real/
 
 *.tmp
 *.temp
+
+*.pkl
+*.joblib
+# Production ReleaseGuard model artifacts
+!ai-service/artifacts/models/xgboost/2.0.0/
+!ai-service/artifacts/models/xgboost/2.0.0/model.joblib
+!ai-service/artifacts/models/xgboost/2.0.0/metadata.json

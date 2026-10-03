@@ -102,6 +102,7 @@ FEATURE_SCHEMA_FILE = MODEL_DIR / "feature_schema.json"
 MANIFEST_FILE = MANIFEST_DIR / "real_model_training_manifest.json"
 
 FEATURE_VERSION = "1.0.0"
+DATASET_VERSION = "2.0.0"
 
 LABELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 LABEL_TO_ID = {
@@ -866,6 +867,7 @@ def train_models() -> None:
     metadata = {
         "model_version": MODEL_VERSION,
         "feature_version": FEATURE_VERSION,
+        "dataset_version": DATASET_VERSION,
         "created_at_utc": utc_now(),
         "training_environment": {
             "python": platform.python_version(),
@@ -879,6 +881,7 @@ def train_models() -> None:
             ),
         },
         "dataset": {
+            "dataset_version": DATASET_VERSION,
             "train_file": str(TRAIN_FILE),
             "validation_file": str(VALIDATION_FILE),
             "test_file": str(TEST_FILE),
@@ -951,7 +954,8 @@ def train_models() -> None:
         "model_version": MODEL_VERSION,
         "feature_version": FEATURE_VERSION,
         "created_at_utc": utc_now(),
-        "source_dataset_version": "2.0.1",
+        "dataset_version": DATASET_VERSION,
+        "source_dataset_version": DATASET_VERSION,
         "inputs": {
             "train": {
                 "path": str(TRAIN_FILE),

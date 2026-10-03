@@ -20,8 +20,19 @@ Every trained model artifact must contain the following metadata:
 
 These values are persisted in `metadata.json`.
 
-### Example
+### Examples
 
+**Production Model (XGBoost 2.0.0):**
+```json
+{
+  "model_name": "xgboost",
+  "model_version": "2.0.0",
+  "feature_version": "1.0.0",
+  "dataset_version": "2.0.0"
+}
+```
+
+**Baseline Model:**
 ```json
 {
   "model_name": "logistic_regression_baseline",
@@ -29,3 +40,4 @@ These values are persisted in `metadata.json`.
   "feature_version": "1.0.0",
   "dataset_version": "1.0.0"
 }
+```

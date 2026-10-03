@@ -1,0 +1,136 @@
+{
+  "dataset_version": "2.0.0",
+  "feature_version": "1.0.0",
+  "model_name": "xgboost",
+  "model_sha256": "1322851a2fcd2815f27fa38dabf97deb47e616f91b82ca1e1b9bc51d541f415b",
+  "model_type": "multiclass_xgboost",
+  "model_version": "2.0.0",
+  "production_artifact": "D:\\Startup\\releaseguard\\ai-service\\artifacts\\models\\xgboost\\2.0.0\\model.joblib",
+  "promoted_at_utc": "2026-10-03T09:01:36Z",
+  "source": "real-data-training",
+  "source_metadata": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\model_metadata.json",
+  "source_model": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\xgboost.joblib",
+  "training_metadata": {
+    "created_at_utc": "2026-10-03T08:59:22Z",
+    "dataset": {
+      "dataset_version": "2.0.0",
+      "test_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\test.jsonl",
+      "test_records": 138,
+      "train_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\train.jsonl",
+      "train_records": 319,
+      "validation_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\validation.jsonl",
+      "validation_records": 103
+    },
+    "dataset_version": "2.0.0",
+    "feature_version": "1.0.0",
+    "features": {
+      "feature_count": 28,
+      "feature_names": [
+        "addition_deletion_ratio",
+        "api_finding_count",
+        "change_to_file_ratio",
+        "code_finding_count",
+        "critical_finding_count",
+        "database_finding_count",
+        "dependency_finding_count",
+        "files_added",
+        "files_changed",
+        "files_deleted",
+        "files_modified",
+        "has_api_findings",
+        "has_code_findings",
+        "has_critical_findings",
+        "has_database_findings",
+        "has_dependency_findings",
+        "has_high_findings",
+        "has_test_impact_findings",
+        "high_finding_count",
+        "high_or_critical_finding_count",
+        "info_finding_count",
+        "low_finding_count",
+        "medium_finding_count",
+        "test_impact_finding_count",
+        "total_additions",
+        "total_changes",
+        "total_deletions",
+        "total_finding_count"
+      ],
+      "feature_version": "1.0.0"
+    },
+    "labels": {
+      "classes": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "mapping": {
+        "CRITICAL": 3,
+        "HIGH": 2,
+        "LOW": 0,
+        "MEDIUM": 1
+      },
+      "test_distribution": {
+        "CRITICAL": 3,
+        "HIGH": 0,
+        "LOW": 135,
+        "MEDIUM": 0
+      },
+      "train_distribution": {
+        "CRITICAL": 2,
+        "HIGH": 1,
+        "LOW": 316,
+        "MEDIUM": 0
+      },
+      "validation_distribution": {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "LOW": 103,
+        "MEDIUM": 0
+      }
+    },
+    "model_version": "2.0.0",
+    "models": {
+      "logistic_regression": {
+        "algorithm": "LogisticRegression",
+        "artifact": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\logistic_regression.joblib",
+        "class_weight": "balanced",
+        "max_iter": 5000,
+        "random_state": 42,
+        "solver": "lbfgs"
+      },
+      "xgboost": {
+        "algorithm": "XGBClassifier",
+        "artifact": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\xgboost.joblib",
+        "colsample_bytree": 0.85,
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "n_estimators": 300,
+        "objective": "multi:softprob",
+        "random_state": 42,
+        "subsample": 0.85
+      }
+    },
+    "protocol": {
+      "evaluation": [
+        "accuracy",
+        "macro_f1",
+        "weighted_f1",
+        "macro_precision",
+        "macro_recall",
+        "confusion_matrix"
+      ],
+      "oversampling": false,
+      "repository_isolated_split": true,
+      "synthetic_labels": false,
+      "temporal_policy_from_v0_5_8_4": true
+    },
+    "training_environment": {
+      "numpy": "2.0.2",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "python": "3.9.10",
+      "scikit_learn": "1.6.0",
+      "xgboost": "2.1.3"
+    }
+  }
+}
