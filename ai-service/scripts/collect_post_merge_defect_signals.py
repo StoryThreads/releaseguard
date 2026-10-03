@@ -891,11 +891,11 @@ def collect_timeline_signals(
         text_lower = text.lower()
 
         # ----------------------------------------------------
-        # Explicit revert evidence
+        # Explicit revert evidence in commit or referenced event
         # ----------------------------------------------------
 
         if (
-            event_type == "committed"
+            event_type in {"committed", "referenced"}
             and "revert" in text_lower
         ):
 
@@ -912,6 +912,8 @@ def collect_timeline_signals(
                     ),
                     "commit_url": event.get(
                         "html_url"
+                    ) or event.get(
+                        "commit_url"
                     ),
                     "message": text,
                     "observed_at": (
@@ -928,11 +930,56 @@ def collect_timeline_signals(
             continue
 
         # ----------------------------------------------------
+        # Post-merge comment discussion evidence
+        # ----------------------------------------------------
+
+        if event_type == "commented":
+            body = (event.get("body") or "")
+            body_lower = body.lower()
+            defect_terms = [
+                "regression",
+                "broke",
+                "breaks",
+                "broken",
+                "caused by this pr",
+                "introduced in this pr",
+                "caused this issue",
+                "caused a bug",
+                "causes a bug",
+                "revert",
+            ]
+            if any(term in body_lower for term in defect_terms):
+                is_revert = any(
+                    term in body_lower
+                    for term in ["revert", "reverted in", "opened up a revert"]
+                )
+                signals.append(
+                    {
+                        "signal_type": "post_merge_defect_discussion",
+                        "strength": "moderate" if is_revert else "weak",
+                        "comment_id": event.get("id"),
+                        "comment_url": event.get("html_url"),
+                        "message": body[:300],
+                        "observed_at": (
+                            event.get("created_at")
+                            or event.get("updated_at")
+                        ),
+                        "reason": (
+                            "Post-merge discussion reports a revert or follow-up fix."
+                            if is_revert
+                            else "Post-merge discussion reports a regression or defect behavior caused by this PR."
+                        ),
+                    }
+                )
+                continue
+
+        # ----------------------------------------------------
         # Cross-referenced issue / PR
         # ----------------------------------------------------
 
         if event_type not in {
             "cross-referenced",
+
             "connected",
         }:
             continue
@@ -1341,8 +1388,29 @@ def collect_signals_for_pr(
     signals: list[dict[str, Any]] = []
 
     # --------------------------------------------------------
+    # 0. PR title revert evidence
+    # --------------------------------------------------------
+    pr_title = (pull_request.get("title") or "").strip()
+    pr_title_lower = pr_title.lower()
+    if (
+        pr_title_lower.startswith("revert \"")
+        or pr_title_lower.startswith("revert: ")
+        or pr_title_lower.startswith("reverted ")
+        or "revert" in pr_title_lower.split()
+    ):
+        signals.append(
+            {
+                "signal_type": "revert_pull_request",
+                "strength": "strong",
+                "observed_at": merged_at,
+                "reason": "The pull request itself is an explicit revert of a previous change.",
+            }
+        )
+
+    # --------------------------------------------------------
     # 1. Existing linked-issue data
     # --------------------------------------------------------
+
 
     signals.extend(
         collect_cached_issue_signals(
@@ -1605,7 +1673,8 @@ def main() -> None:
                 # RESUME SUPPORT
                 # ------------------------------------------------
 
-                if destination.exists():
+                force_reprocess = os.getenv("FORCE_REPROCESS", "").lower() in ("1", "true")
+                if destination.exists() and not force_reprocess:
 
                     skipped_existing += 1
 
@@ -1662,11 +1731,9 @@ def main() -> None:
                         "signal_type"
                     )
 
-                    if signal_type in signal_counts:
+                    if signal_type:
+                        signal_counts[signal_type] = signal_counts.get(signal_type, 0) + 1
 
-                        signal_counts[
-                            signal_type
-                        ] += 1
 
                 summary = record.get(
                     "signal_summary",

@@ -420,7 +420,31 @@ def fetch_merged_pull_requests(
     return collected
 
 
+def fetch_defect_and_revert_pull_requests(
+    owner: str,
+    name: str,
+    maximum: int = 15
+) -> list[dict[str, Any]]:
+    """Targeted search for merged revert pull requests to guarantee post-merge defect representation."""
+    url = f"{GITHUB_API_BASE}/search/issues"
+    query = f"repo:{owner}/{name} is:pr is:merged revert in:title"
+    params = {
+        "q": query,
+        "sort": "updated",
+        "order": "desc",
+        "per_page": min(maximum, 30),
+    }
+    try:
+        data = get_json(url, params=params)
+        items = data.get("items", [])
+        return items[:maximum]
+    except Exception as e:
+        print(f"    Notice: Search for revert PRs in {owner}/{name} returned: {e}")
+        return []
+
+
 def fetch_pull_request(
+
     owner: str,
     name: str,
     number: int
@@ -782,9 +806,24 @@ def collect() -> None:
                 )
             )
 
+            # Targeted defect/revert PRs to guarantee HIGH and CRITICAL defect representation
+            revert_prs = fetch_defect_and_revert_pull_requests(
+                owner,
+                name,
+                maximum=15
+            )
+            existing_numbers = {pr.get("number") for pr in pull_requests}
+            added_reverts = 0
+            for r_pr in revert_prs:
+                num = r_pr.get("number")
+                if num and num not in existing_numbers:
+                    pull_requests.append(r_pr)
+                    existing_numbers.add(num)
+                    added_reverts += 1
+
             print(
                 f"  Merged PRs found: "
-                f"{len(pull_requests)}"
+                f"{len(pull_requests)} (including {added_reverts} targeted revert/defect PRs)"
             )
 
             # ------------------------------------------------
@@ -800,11 +839,30 @@ def collect() -> None:
                     "number"
                 )
 
+                pr_file = (
+                    PR_RAW_DIR
+                    / owner
+                    / name
+                    / f"pr-{number}.json"
+                )
+
+                if pr_file.exists():
+                    print(
+                        f"  [{index}/"
+                        f"{len(pull_requests)}] "
+                        f"PR #{number} (cached)"
+                    )
+                    result[
+                        "pull_requests_collected"
+                    ] += 1
+                    continue
+
                 print(
                     f"  [{index}/"
                     f"{len(pull_requests)}] "
                     f"PR #{number}"
                 )
+
 
                 try:
 
