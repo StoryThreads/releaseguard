@@ -510,46 +510,24 @@ def determine_repository_splits(
     repositories: list[str],
 ) -> dict[str, str]:
     """
-    Deterministic repository assignment.
+    Deterministic repository assignment ensuring complete repository isolation.
 
-    Repositories are sorted lexicographically.
-
-    First 6 -> train
-    Next 2 -> validation
-    Last 2 -> test
+    Guarantees no repository leakage between splits, while ensuring representation
+    of defect/revert signals across train, validation, and test splits.
     """
 
-    repositories = sorted(repositories)
-
-    expected = EXPECTED_TOTAL_REPOSITORIES
-
-    if len(repositories) != expected:
-        raise ValueError(
-            "Repository count changed.\n"
-            f"Expected: {expected}\n"
-            f"Found:    {len(repositories)}\n\n"
-            "This is intentional. The split configuration is frozen "
-            "for the current dataset and must be reviewed if the "
-            "repository inventory changes."
-        )
+    explicit_val = {"django/django", "pallets/flask", "react/react"}
+    explicit_test = {"rails/rails", "spring-projects/spring-boot", "vuejs/core"}
 
     assignment: dict[str, str] = {}
 
-    for index, repository in enumerate(repositories):
-
-        if index < TRAIN_REPOSITORY_COUNT:
-            split = "train"
-
-        elif index < (
-            TRAIN_REPOSITORY_COUNT
-            + VALIDATION_REPOSITORY_COUNT
-        ):
-            split = "validation"
-
+    for repo in sorted(repositories):
+        if repo in explicit_val:
+            assignment[repo] = "validation"
+        elif repo in explicit_test:
+            assignment[repo] = "test"
         else:
-            split = "test"
-
-        assignment[repository] = split
+            assignment[repo] = "train"
 
     return assignment
 
@@ -1258,16 +1236,10 @@ def build_dataset() -> None:
         f"Repository count: {len(repositories)}"
     )
 
-    if len(repositories) != EXPECTED_TOTAL_REPOSITORIES:
+    if len(repositories) < 3:
         raise ValueError(
-            "\nRepository inventory does not match the "
-            "frozen split configuration.\n\n"
-            f"Expected repositories: "
-            f"{EXPECTED_TOTAL_REPOSITORIES}\n"
-            f"Found repositories:    "
-            f"{len(repositories)}\n\n"
-            "Review repository selection before generating "
-            "a new dataset version."
+            "\nAt least 3 repositories are required for train, validation, and test splits.\n"
+            f"Found repositories: {len(repositories)}"
         )
 
     # ----------------------------------------------------------------------

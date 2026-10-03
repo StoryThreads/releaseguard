@@ -2,24 +2,24 @@
   "dataset_version": "2.0.0",
   "feature_version": "1.0.0",
   "model_name": "xgboost",
-  "model_sha256": "1322851a2fcd2815f27fa38dabf97deb47e616f91b82ca1e1b9bc51d541f415b",
+  "model_sha256": "5bcebd769eb301ba1b7f64e4bb4ffd6d17d9ced29af49d1c5345f086f4794688",
   "model_type": "multiclass_xgboost",
   "model_version": "2.0.0",
   "production_artifact": "D:\\Startup\\releaseguard\\ai-service\\artifacts\\models\\xgboost\\2.0.0\\model.joblib",
-  "promoted_at_utc": "2026-10-03T09:01:36Z",
+  "promoted_at_utc": "2026-10-03T18:56:04Z",
   "source": "real-data-training",
   "source_metadata": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\model_metadata.json",
   "source_model": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\models\\2.0.0\\xgboost.joblib",
   "training_metadata": {
-    "created_at_utc": "2026-10-03T08:59:22Z",
+    "created_at_utc": "2026-10-03T18:55:51Z",
     "dataset": {
       "dataset_version": "2.0.0",
       "test_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\test.jsonl",
-      "test_records": 138,
+      "test_records": 188,
       "train_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\train.jsonl",
-      "train_records": 319,
+      "train_records": 543,
       "validation_file": "D:\\Startup\\releaseguard\\ai-service\\data\\real\\splits\\validation.jsonl",
-      "validation_records": 103
+      "validation_records": 132
     },
     "dataset_version": "2.0.0",
     "feature_version": "1.0.0",
@@ -71,21 +71,21 @@
         "MEDIUM": 1
       },
       "test_distribution": {
-        "CRITICAL": 3,
-        "HIGH": 0,
-        "LOW": 135,
-        "MEDIUM": 0
+        "CRITICAL": 4,
+        "HIGH": 26,
+        "LOW": 157,
+        "MEDIUM": 1
       },
       "train_distribution": {
-        "CRITICAL": 2,
-        "HIGH": 1,
-        "LOW": 316,
-        "MEDIUM": 0
+        "CRITICAL": 10,
+        "HIGH": 81,
+        "LOW": 435,
+        "MEDIUM": 17
       },
       "validation_distribution": {
-        "CRITICAL": 0,
-        "HIGH": 0,
-        "LOW": 103,
+        "CRITICAL": 8,
+        "HIGH": 10,
+        "LOW": 114,
         "MEDIUM": 0
       }
     },

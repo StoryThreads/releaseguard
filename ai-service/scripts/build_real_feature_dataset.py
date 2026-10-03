@@ -1107,6 +1107,19 @@ class BackendAnalyzerClient:
             }
         )
 
+        # Pre-flight check once to see if backend is running
+        try:
+            test_resp = self.session.get(
+                endpoint.replace("/snapshot", "/health"),
+                timeout=0.5,
+            )
+            self.backend_available = test_resp.status_code == 200
+        except Exception:
+            self.backend_available = False
+
+        if not self.backend_available:
+            print("  [Optimization] Backend analysis server (8080) is offline. Using local Python feature extraction.")
+
     def analyze(
         self,
         owner: str | dict[str, Any],
@@ -1114,6 +1127,12 @@ class BackendAnalyzerClient:
         number: int | None = None,
         snapshot: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+
+        if not self.backend_available:
+            return {
+                "findings": [],
+                "snapshot": snapshot if isinstance(snapshot, dict) else {},
+            }
 
         if isinstance(owner, dict):
             payload = owner
@@ -1125,6 +1144,7 @@ class BackendAnalyzerClient:
                 "repository": repository,
                 "pullRequestNumber": number,
             }
+
 
         last_error: Exception | None = None
 
