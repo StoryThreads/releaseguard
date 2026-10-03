@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 
+from app.core.config import settings
 from app.prediction.schemas import (
     PredictionRequest,
     PredictionResponse,
@@ -7,7 +8,7 @@ from app.prediction.schemas import (
 from app.prediction.service import PredictionService
 
 
-APP_VERSION = "0.5.8"
+APP_VERSION = settings.SERVICE_VERSION
 
 app = FastAPI(
     title="ReleaseGuard AI Service",

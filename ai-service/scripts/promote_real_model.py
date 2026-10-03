@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+import os
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 
-MODEL_VERSION = "2.0.0"
+MODEL_VERSION = os.getenv("MODEL_VERSION", "2.0.0")
 FEATURE_VERSION = "1.0.0"
 DATASET_VERSION = "2.0.0"
 

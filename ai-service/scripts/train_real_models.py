@@ -83,7 +83,7 @@ from app.model.real_pipelines import (
 DATA_DIR = AI_SERVICE_DIR / "data" / "real"
 
 SPLIT_DIR = DATA_DIR / "splits"
-MODEL_VERSION = "2.0.0"
+MODEL_VERSION = os.getenv("MODEL_VERSION", "2.0.0")
 
 MODEL_DIR = DATA_DIR / "models" / MODEL_VERSION
 MANIFEST_DIR = DATA_DIR / "manifests"

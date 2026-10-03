@@ -15,20 +15,13 @@ from app.prediction.risk import (
 from app.prediction.schemas import PredictionRequest, PredictionResponse
 
 
-SERVICE_ROOT = Path(__file__).resolve().parents[2]
+from app.core.config import settings
 
-MODEL_VERSION = "2.0.0"
-
-MODEL_DIRECTORY = (
-    SERVICE_ROOT
-    / "artifacts"
-    / "models"
-    / "xgboost"
-    / MODEL_VERSION
-)
-
-MODEL_PATH = MODEL_DIRECTORY / "model.joblib"
-METADATA_PATH = MODEL_DIRECTORY / "metadata.json"
+SERVICE_ROOT = settings.ROOT_DIR
+MODEL_VERSION = settings.MODEL_VERSION
+MODEL_DIRECTORY = settings.production_model_dir
+MODEL_PATH = settings.production_model_path
+METADATA_PATH = settings.production_metadata_path
 
 
 class PredictionService:

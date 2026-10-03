@@ -47,8 +47,11 @@ setattr(sys.modules["__main__"], "XGBoostPipeline", XGBoostPipeline)
 DATA_DIR = AI_SERVICE_DIR / "data"
 
 REAL_DIR = DATA_DIR / "real"
+MODEL_VERSION = os.getenv("MODEL_VERSION", "2.0.0")
+FEATURE_VERSION = "1.0.0"
+
 REAL_SPLIT_DIR = REAL_DIR / "splits"
-REAL_MODEL_DIR = REAL_DIR / "models" / "2.0.0"
+REAL_MODEL_DIR = REAL_DIR / "models" / MODEL_VERSION
 
 OUTPUT_DIR = REAL_DIR / "evaluation"
 MANIFEST_DIR = REAL_DIR / "manifests"
@@ -66,9 +69,6 @@ FEATURE_SCHEMA_FILE = REAL_MODEL_DIR / "feature_schema.json"
 
 OUTPUT_FILE = OUTPUT_DIR / "real_model_evaluation.json"
 MANIFEST_FILE = MANIFEST_DIR / "real_model_evaluation_manifest.json"
-
-MODEL_VERSION = "2.0.0"
-FEATURE_VERSION = "1.0.0"
 
 CLASS_NAMES = [
     "LOW",

@@ -50,7 +50,7 @@ GITHUB_API_BASE = "https://api.github.com"
 PER_PAGE = 100
 
 # Maximum merged PRs collected from each repository
-MAX_PRS_PER_REPOSITORY = 100
+MAX_PRS_PER_REPOSITORY = int(os.getenv("COLLECT_LIMIT", "100"))
 
 REQUEST_TIMEOUT_SECONDS = 30
 
