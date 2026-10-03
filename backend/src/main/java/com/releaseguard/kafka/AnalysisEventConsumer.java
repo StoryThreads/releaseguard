@@ -18,13 +18,16 @@ public class AnalysisEventConsumer {
 
     private final AnalysisService analysisService;
     private final ProcessedEventService processedEventService;
+    private final com.releaseguard.redis.RedisIdempotencyService redisIdempotencyService;
 
     public AnalysisEventConsumer(
         AnalysisService analysisService,
-        ProcessedEventService processedEventService
+        ProcessedEventService processedEventService,
+        com.releaseguard.redis.RedisIdempotencyService redisIdempotencyService
     ) {
         this.analysisService = analysisService;
         this.processedEventService = processedEventService;
+        this.redisIdempotencyService = redisIdempotencyService;
     }
 
     @KafkaListener(
@@ -58,14 +61,38 @@ public class AnalysisEventConsumer {
                 correlationId
             );
 
-            if (processedEventService.isCompleted(eventId)) {
+            // Step 1: Redis Fast Idempotency Check & Atomic Distributed Lease
+            com.releaseguard.redis.RedisIdempotencyService.LeaseResult leaseResult =
+                redisIdempotencyService.acquireProcessingLease(eventId);
 
+            if (leaseResult.status() == com.releaseguard.redis.RedisIdempotencyService.LeaseStatus.ALREADY_COMPLETED) {
                 log.info(
-                    "Ignoring already completed event: eventId={}, correlationId={}",
+                    "Ignoring already completed event in Redis: eventId={}, correlationId={}",
                     eventId,
                     correlationId
                 );
+                return;
+            }
 
+            if (leaseResult.status() == com.releaseguard.redis.RedisIdempotencyService.LeaseStatus.IN_PROGRESS) {
+                log.warn(
+                    "Event is currently being processed by another worker in Redis: eventId={}, correlationId={}",
+                    eventId,
+                    correlationId
+                );
+                throw new EventProcessingInProgressException(
+                    "Event is currently being processed by another worker: " + eventId
+                );
+            }
+
+            // Step 2: Authoritative PostgreSQL check (Defense in depth / fail-open fallback)
+            if (processedEventService.isCompleted(eventId)) {
+                log.info(
+                    "Ignoring already completed event in PostgreSQL: eventId={}, correlationId={}",
+                    eventId,
+                    correlationId
+                );
+                redisIdempotencyService.markCompleted(eventId);
                 return;
             }
 
@@ -78,15 +105,26 @@ public class AnalysisEventConsumer {
             AnalyzePullRequestEvent payload =
                 event.getPayload();
 
-            analysisService.analyzePullRequest(
-                payload.getProjectId(),
-                payload.getOwner(),
-                payload.getRepository(),
-                payload.getPullRequestNumber()
-            );
+            try {
+                analysisService.analyzePullRequest(
+                    payload.getProjectId(),
+                    payload.getOwner(),
+                    payload.getRepository(),
+                    payload.getPullRequestNumber()
+                );
+            } catch (Exception ex) {
+                // If processing fails, release Redis lease using worker's specific token
+                redisIdempotencyService.releaseProcessingLease(eventId, leaseResult.leaseToken());
+                throw ex;
+            }
 
+            // Step 3: Mark completed in both PostgreSQL (authoritative) and Redis (fast cache)
             processedEventService.markCompleted(
                 eventId
+            );
+            redisIdempotencyService.markCompleted(
+                eventId,
+                leaseResult.leaseToken()
             );
 
             log.info(

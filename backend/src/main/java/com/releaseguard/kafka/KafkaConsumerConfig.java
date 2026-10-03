@@ -120,15 +120,30 @@ public class KafkaConsumerConfig {
                     )
             );
 
-        FixedBackOff backOff =
+        FixedBackOff defaultBackOff =
             new FixedBackOff(
                 1000L,
                 2L
             );
 
-        return new DefaultErrorHandler(
-            recoverer,
-            backOff
-        );
+        DefaultErrorHandler errorHandler =
+            new DefaultErrorHandler(
+                recoverer,
+                defaultBackOff
+            );
+
+        errorHandler.setBackOffFunction((record, exception) -> {
+            Throwable cause = exception;
+            while (cause != null) {
+                if (cause instanceof EventProcessingInProgressException) {
+                    // Retry with backoff for concurrently in-flight or crashing worker leases
+                    return new FixedBackOff(2000L, 3L);
+                }
+                cause = cause.getCause();
+            }
+            return defaultBackOff;
+        });
+
+        return errorHandler;
     }
 }

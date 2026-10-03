@@ -15,14 +15,24 @@ import java.util.List;
 public class MlPredictionClient {
 
     private final RestClient restClient;
+    private final String activeModelVersion;
 
     public MlPredictionClient(
         @Value("${releaseguard.ml-service.url:http://localhost:8000}")
-        String baseUrl
+        String baseUrl,
+        @Value("${releaseguard.ml-service.model-version:2.0.0}")
+        String activeModelVersion
     ) {
         this.restClient = RestClient.builder()
             .baseUrl(baseUrl)
             .build();
+        this.activeModelVersion = (activeModelVersion != null && !activeModelVersion.isBlank())
+            ? activeModelVersion
+            : "2.0.0";
+    }
+
+    public String getActiveModelVersion() {
+        return activeModelVersion;
     }
 
     public MlPredictionResponse predict(

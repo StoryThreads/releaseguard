@@ -33,6 +33,8 @@ public class AnalysisService {
     private final FindingPersistenceService findingPersistenceService;
     private final MlPredictionClient mlPredictionClient;
     private final MlPredictionPersistenceService mlPredictionPersistenceService;
+    private final com.releaseguard.redis.RedisCacheService redisCacheService;
+    private final com.releaseguard.redis.RedisProperties redisProperties;
 
     public AnalysisService(
         GitHubRestAdapter githubRestAdapter,
@@ -44,6 +46,35 @@ public class AnalysisService {
         MlPredictionClient mlPredictionClient,
         MlPredictionPersistenceService mlPredictionPersistenceService
     ) {
+        this(
+            githubRestAdapter,
+            snapshotMapper,
+            sourceService,
+            changeService,
+            analyzerEngine,
+            findingPersistenceService,
+            mlPredictionClient,
+            mlPredictionPersistenceService,
+            null,
+            new com.releaseguard.redis.RedisProperties()
+        );
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AnalysisService(
+        GitHubRestAdapter githubRestAdapter,
+        GitHubChangeSnapshotMapper snapshotMapper,
+        SourceService sourceService,
+        ChangeService changeService,
+        AnalyzerEngine analyzerEngine,
+        FindingPersistenceService findingPersistenceService,
+        MlPredictionClient mlPredictionClient,
+        MlPredictionPersistenceService mlPredictionPersistenceService,
+        @org.springframework.lang.Nullable
+        com.releaseguard.redis.RedisCacheService redisCacheService,
+        @org.springframework.lang.Nullable
+        com.releaseguard.redis.RedisProperties redisProperties
+    ) {
         this.githubRestAdapter = githubRestAdapter;
         this.snapshotMapper = snapshotMapper;
         this.sourceService = sourceService;
@@ -52,6 +83,8 @@ public class AnalysisService {
         this.findingPersistenceService = findingPersistenceService;
         this.mlPredictionClient = mlPredictionClient;
         this.mlPredictionPersistenceService = mlPredictionPersistenceService;
+        this.redisCacheService = redisCacheService;
+        this.redisProperties = redisProperties != null ? redisProperties : new com.releaseguard.redis.RedisProperties();
     }
 
     @Transactional
@@ -76,12 +109,37 @@ public class AnalysisService {
                 pullRequestNumber
             );
 
-        List<GitHubPullRequestFileResponse> files =
-            githubRestAdapter.getPullRequestFiles(
+        String headRevision =
+            pullRequest.getHead() != null
+                ? pullRequest.getHead().getSha()
+                : "unknown";
+
+        List<GitHubPullRequestFileResponse> files = null;
+        String filesCacheKey = !"unknown".equals(headRevision)
+            ? com.releaseguard.redis.RedisKeys.gitHubFiles(owner, repository, headRevision)
+            : null;
+
+        if (redisCacheService != null && filesCacheKey != null) {
+            files = redisCacheService.get(
+                filesCacheKey,
+                new com.fasterxml.jackson.core.type.TypeReference<List<GitHubPullRequestFileResponse>>() {}
+            ).orElse(null);
+        }
+
+        if (files == null) {
+            files = githubRestAdapter.getPullRequestFiles(
                 owner,
                 repository,
                 pullRequestNumber
             );
+            if (redisCacheService != null && filesCacheKey != null && files != null) {
+                redisCacheService.put(
+                    filesCacheKey,
+                    files,
+                    java.time.Duration.ofSeconds(redisProperties.getTtls().getGithubDiffSeconds())
+                );
+            }
+        }
 
         ChangeSnapshot snapshot =
             snapshotMapper.map(
@@ -99,11 +157,6 @@ public class AnalysisService {
         String baseRevision =
             pullRequest.getBase() != null
                 ? pullRequest.getBase().getSha()
-                : "unknown";
-
-        String headRevision =
-            pullRequest.getHead() != null
-                ? pullRequest.getHead().getSha()
                 : "unknown";
 
         String status =
@@ -133,11 +186,42 @@ public class AnalysisService {
             findings
         );
 
-        MlPredictionResponse riskAnalysis =
-            mlPredictionClient.predict(
+        String configuredModelVersion = (mlPredictionClient != null)
+            ? mlPredictionClient.getActiveModelVersion()
+            : null;
+        String activeModelVersion = (configuredModelVersion != null && !configuredModelVersion.isBlank())
+            ? configuredModelVersion
+            : "2.0.0";
+
+        MlPredictionResponse riskAnalysis = null;
+        String predictionCacheKey = !"unknown".equals(headRevision)
+            ? com.releaseguard.redis.RedisKeys.predictionResult(headRevision, activeModelVersion)
+            : null;
+
+        if (redisCacheService != null && predictionCacheKey != null) {
+            riskAnalysis = redisCacheService.get(
+                predictionCacheKey,
+                MlPredictionResponse.class
+            ).orElse(null);
+        }
+
+        if (riskAnalysis == null) {
+            riskAnalysis = mlPredictionClient.predict(
                 snapshot,
                 findings
             );
+            if (redisCacheService != null && riskAnalysis != null && !"unknown".equals(headRevision)) {
+                String modelVersion = (riskAnalysis.getModelVersion() != null && !riskAnalysis.getModelVersion().isBlank())
+                    ? riskAnalysis.getModelVersion()
+                    : activeModelVersion;
+                String versionedKey = com.releaseguard.redis.RedisKeys.predictionResult(headRevision, modelVersion);
+                redisCacheService.put(
+                    versionedKey,
+                    riskAnalysis,
+                    java.time.Duration.ofSeconds(redisProperties.getTtls().getPredictionResultSeconds())
+                );
+            }
+        }
 
         mlPredictionPersistenceService.save(
             change,

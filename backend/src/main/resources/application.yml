@@ -25,6 +25,13 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+      connect-timeout: 2s
+
   flyway:
     enabled: true
 
@@ -44,3 +51,14 @@ github:
 releaseguard:
   ml-service:
     url: ${ML_SERVICE_URL:http://localhost:8000}
+    model-version: ${ML_MODEL_VERSION:2.0.0}
+  redis:
+    enabled: ${REDIS_ENABLED:true}
+    ttls:
+      idempotency-processing-seconds: 300
+      idempotency-completed-seconds: 86400
+      github-diff-seconds: 3600
+      prediction-result-seconds: 86400
+    rate-limiter:
+      enabled: ${REDIS_RATE_LIMITER_ENABLED:false}
+      requests-per-minute: 60
