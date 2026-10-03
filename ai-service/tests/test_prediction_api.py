@@ -61,10 +61,10 @@ def test_health():
     body = response.json()
 
     assert body["status"] == "UP"
-    assert body["model_name"] in {"xgboost", "xgboost_candidate"}
-    assert body["model_version"] in {"1.0.0", "2.0.0"}
+    assert body["model_name"] == "xgboost"
+    assert body["model_version"] == "2.0.0"
     assert body["feature_version"] == "1.0.0"
-    assert body["dataset_version"] in {"1.0.0", "2.0.0"}
+    assert body["dataset_version"] == "2.0.0"
 
 
 def test_prediction_endpoint_returns_risk_prediction():
@@ -102,10 +102,10 @@ def test_prediction_endpoint_returns_risk_prediction():
 
     assert len(body["feature_vector"]) == 28
 
-    assert body["model_name"] in {"xgboost", "xgboost_candidate"}
-    assert body["model_version"] in {"1.0.0", "2.0.0"}
+    assert body["model_name"] == "xgboost"
+    assert body["model_version"] == "2.0.0"
     assert body["feature_version"] == "1.0.0"
-    assert body["dataset_version"] in {"1.0.0", "2.0.0"}
+    assert body["dataset_version"] == "2.0.0"
 
 
 def test_prediction_request_validation_rejects_missing_change_snapshot():
