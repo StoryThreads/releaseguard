@@ -15,9 +15,14 @@ import java.util.List;
 public class ChangeController {
 
     private final ChangeService changeService;
+    private final com.releaseguard.service.DashboardService dashboardService;
 
-    public ChangeController(ChangeService changeService) {
+    public ChangeController(
+        ChangeService changeService,
+        com.releaseguard.service.DashboardService dashboardService
+    ) {
         this.changeService = changeService;
+        this.dashboardService = dashboardService;
     }
 
     @PostMapping
@@ -39,10 +44,31 @@ public class ChangeController {
         return toResponse(change);
     }
 
+    @GetMapping("/recent")
+    public List<com.releaseguard.dto.analysis.ChangeAnalysisDetailsResponse> getRecentChanges(
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        return dashboardService.getRecentChanges(limit);
+    }
+
     @GetMapping("/{id}")
     public ChangeResponse getChange(@PathVariable Long id) {
 
         return toResponse(changeService.getChange(id));
+    }
+
+    @GetMapping("/{id}/analysis")
+    public com.releaseguard.dto.analysis.ChangeAnalysisDetailsResponse getChangeAnalysis(
+        @PathVariable Long id
+    ) {
+        return dashboardService.getChangeAnalysisDetails(id);
+    }
+
+    @GetMapping("/{id}/status")
+    public com.releaseguard.dto.analysis.AnalysisStatusResponse getChangeStatus(
+        @PathVariable Long id
+    ) {
+        return dashboardService.getAnalysisStatus(id);
     }
 
     @GetMapping("/source/{sourceId}")

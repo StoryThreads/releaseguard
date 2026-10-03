@@ -15,9 +15,14 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final com.releaseguard.service.DashboardService dashboardService;
 
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(
+        ProjectService projectService,
+        com.releaseguard.service.DashboardService dashboardService
+    ) {
         this.projectService = projectService;
+        this.dashboardService = dashboardService;
     }
 
     @PostMapping
@@ -47,6 +52,20 @@ public class ProjectController {
     public ProjectResponse getProject(@PathVariable Long id) {
 
         return toResponse(projectService.getProject(id));
+    }
+
+    @GetMapping("/{id}/summary")
+    public com.releaseguard.dto.project.ProjectSummaryResponse getProjectSummary(
+        @PathVariable Long id
+    ) {
+        return dashboardService.getProjectSummary(id);
+    }
+
+    @GetMapping("/{id}/changes")
+    public List<com.releaseguard.dto.analysis.ChangeAnalysisDetailsResponse> getProjectChanges(
+        @PathVariable Long id
+    ) {
+        return dashboardService.getChangesByProject(id);
     }
 
     private ProjectResponse toResponse(Project project) {

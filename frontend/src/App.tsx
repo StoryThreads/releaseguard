@@ -1,122 +1,127 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { Navbar } from './components/Navbar';
+import { ProjectList } from './components/ProjectList';
+import { ProjectDetails } from './components/ProjectDetails';
+import { PullRequestList } from './components/PullRequestList';
+import { PullRequestDetails } from './components/PullRequestDetails';
+import { AnalysisProgressModal } from './components/AnalysisProgressModal';
+import { SourceConfigModal } from './components/SourceConfigModal';
+import { WebhookSimulator } from './components/WebhookSimulator';
+import type { Project, Source } from './types';
 
-function App() {
-  const [count, setCount] = useState(0)
+export function App() {
+  const [currentTab, setCurrentTab] = useState<'projects' | 'pull-requests' | 'webhooks'>('projects');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedChangeId, setSelectedChangeId] = useState<number | null>(null);
+
+  // Modals state
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [targetAnalysisProject, setTargetAnalysisProject] = useState<Project | undefined>();
+  const [targetAnalysisSource, setTargetAnalysisSource] = useState<Source | undefined>();
+
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [targetSourceProject, setTargetSourceProject] = useState<Project | null>(null);
+
+  const handleOpenSourceModal = (project: Project) => {
+    setTargetSourceProject(project);
+    setIsSourceModalOpen(true);
+  };
+
+  const handleOpenAnalysisModal = (project?: Project, source?: Source) => {
+    setTargetAnalysisProject(project);
+    setTargetAnalysisSource(source);
+    setIsAnalysisModalOpen(true);
+  };
+
+  const handleAnalysisCompleted = (changeId: number) => {
+    setSelectedChangeId(changeId);
+    setCurrentTab('pull-requests');
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+      {/* Navbar */}
+      <Navbar
+        currentTab={currentTab}
+        onSelectTab={(tab) => {
+          setCurrentTab(tab as any);
+          if (tab === 'projects') setSelectedProjectId(null);
+          if (tab === 'pull-requests') setSelectedChangeId(null);
+        }}
+        onOpenAnalysisModal={() => handleOpenAnalysisModal()}
+      />
 
-      <div className="ticks"></div>
+      {/* Main Content Area */}
+      <main className="main-content">
+        {/* Tab 1: Projects */}
+        {currentTab === 'projects' && (
+          <>
+            {selectedProjectId ? (
+              <ProjectDetails
+                projectId={selectedProjectId}
+                onBack={() => setSelectedProjectId(null)}
+                onSelectChange={(changeId) => {
+                  setSelectedChangeId(changeId);
+                  setCurrentTab('pull-requests');
+                }}
+                onOpenSourceModal={handleOpenSourceModal}
+                onOpenAnalysisModal={handleOpenAnalysisModal}
+              />
+            ) : (
+              <ProjectList
+                onSelectProject={(id) => setSelectedProjectId(id)}
+                onOpenSourceModal={handleOpenSourceModal}
+                onBrowsePullRequests={(projectId) => {
+                  setSelectedProjectId(projectId || null);
+                  setCurrentTab('pull-requests');
+                }}
+              />
+            )}
+          </>
+        )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* Tab 2: Pull Requests */}
+        {currentTab === 'pull-requests' && (
+          <>
+            {selectedChangeId ? (
+              <PullRequestDetails
+                changeId={selectedChangeId}
+                onBack={() => setSelectedChangeId(null)}
+              />
+            ) : (
+              <PullRequestList
+                selectedProjectId={selectedProjectId || undefined}
+                onSelectChange={(changeId) => setSelectedChangeId(changeId)}
+              />
+            )}
+          </>
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* Tab 3: Webhook Automation & Simulator */}
+        {currentTab === 'webhooks' && <WebhookSimulator />}
+      </main>
+
+      {/* Modals */}
+      <AnalysisProgressModal
+        isOpen={isAnalysisModalOpen}
+        onClose={() => setIsAnalysisModalOpen(false)}
+        defaultProject={targetAnalysisProject}
+        defaultSource={targetAnalysisSource}
+        onAnalysisCompleted={handleAnalysisCompleted}
+      />
+
+      {targetSourceProject && (
+        <SourceConfigModal
+          isOpen={isSourceModalOpen}
+          project={targetSourceProject}
+          onClose={() => setIsSourceModalOpen(false)}
+          onSourceAdded={() => {
+            // Project details or list will automatically refresh on next focus/render
+          }}
+        />
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

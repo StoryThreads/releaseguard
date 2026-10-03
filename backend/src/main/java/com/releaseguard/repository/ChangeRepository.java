@@ -10,6 +10,12 @@ public interface ChangeRepository extends JpaRepository<Change, Long> {
 
     List<Change> findBySourceId(Long sourceId);
 
+    List<Change> findBySourceIdOrderByCreatedAtDesc(Long sourceId);
+
+    List<Change> findAllByOrderByCreatedAtDesc();
+
+    List<Change> findBySourceProjectIdOrderByCreatedAtDesc(Long projectId);
+
     Optional<Change> findBySourceIdAndExternalChangeId(
         Long sourceId,
         String externalChangeId
