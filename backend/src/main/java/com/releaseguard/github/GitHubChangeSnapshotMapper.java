@@ -48,19 +48,19 @@ public class GitHubChangeSnapshotMapper {
 
         snapshot.setTotalAdditions(
             files.stream()
-                .mapToInt(GitHubPullRequestFileResponse::getAdditions)
+                .mapToInt(f -> f != null ? f.getAdditions() : 0)
                 .sum()
         );
 
         snapshot.setTotalDeletions(
             files.stream()
-                .mapToInt(GitHubPullRequestFileResponse::getDeletions)
+                .mapToInt(f -> f != null ? f.getDeletions() : 0)
                 .sum()
         );
 
         snapshot.setTotalChanges(
             files.stream()
-                .mapToInt(GitHubPullRequestFileResponse::getChanges)
+                .mapToInt(f -> f != null ? f.getChanges() : 0)
                 .sum()
         );
 

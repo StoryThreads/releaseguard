@@ -22,6 +22,7 @@ public class RedisCacheService {
     private final RedisProperties properties;
 
     @Autowired
+    @SuppressWarnings("deprecation")
     public RedisCacheService(
             @org.springframework.lang.Nullable StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,

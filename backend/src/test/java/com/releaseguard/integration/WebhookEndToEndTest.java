@@ -6,7 +6,6 @@ import com.releaseguard.domain.ChangeSnapshot;
 import com.releaseguard.entity.*;
 import com.releaseguard.ml.dto.MlPredictionResponse;
 import com.releaseguard.repository.*;
-import com.releaseguard.webhook.WebhookSignatureVerifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -106,11 +105,8 @@ public class WebhookEndToEndTest {
         when(analysisService.analyzePullRequest(any(), anyString(), anyString(), anyLong()))
             .thenAnswer(inv -> {
                 Long projectId = inv.getArgument(0);
-                String owner = inv.getArgument(1);
-                String repo = inv.getArgument(2);
                 long prNumber = inv.getArgument(3);
 
-                Project p = projectRepository.findById(projectId).orElseThrow();
                 Source s = sourceRepository.findByProjectId(projectId).get(0);
 
                 Change c = new Change();

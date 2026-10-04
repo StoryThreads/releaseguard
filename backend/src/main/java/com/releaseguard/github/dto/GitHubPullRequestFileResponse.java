@@ -1,7 +1,5 @@
 package com.releaseguard.github.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public class GitHubPullRequestFileResponse {
 
     private String filename;

@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.UUID;
 
 @Service
+@SuppressWarnings("deprecation")
 public class RedisIdempotencyService {
 
     private static final Logger log =

@@ -133,8 +133,9 @@ public class DashboardService {
     }
 
     public AnalysisStatusResponse getAnalysisStatus(Long changeId) {
-        Change change = changeRepository.findById(changeId)
-            .orElseThrow(() -> new ResourceNotFoundException("Change not found with id: " + changeId));
+        if (!changeRepository.existsById(changeId)) {
+            throw new ResourceNotFoundException("Change not found with id: " + changeId);
+        }
 
         Optional<MlPredictionEntity> prediction = mlPredictionRepository.findByChangeId(changeId);
         long findingsCount = findingRepository.countByChangeId(changeId);
@@ -216,7 +217,7 @@ public class DashboardService {
             .toList();
 
         Map<String, Long> severityCounts = findingEntities.stream()
-            .collect(Collectors.groupingBy(FindingEntity::getSeverity, Collectors.counting()));
+            .collect(Collectors.groupingBy(f -> f.getSeverity() != null ? f.getSeverity() : "UNKNOWN", Collectors.counting()));
 
         // Fetch prediction
         DetailedPredictionResponse predictionResponse = null;

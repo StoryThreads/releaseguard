@@ -13,8 +13,6 @@ import com.releaseguard.github.dto.GitHubPullRequestFileResponse;
 import com.releaseguard.github.dto.GitHubPullRequestResponse;
 import com.releaseguard.ml.MlPredictionClient;
 import com.releaseguard.ml.dto.MlPredictionResponse;
-import com.releaseguard.redis.RedisKeys;
-import com.releaseguard.github.GitHubTypeReferences;
 import com.releaseguard.service.ChangeService;
 import com.releaseguard.service.FindingPersistenceService;
 import com.releaseguard.service.MlPredictionPersistenceService;
@@ -63,6 +61,7 @@ public class AnalysisService {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
+    @SuppressWarnings("deprecation")
     public AnalysisService(
         GitHubRestAdapter githubRestAdapter,
         GitHubChangeSnapshotMapper snapshotMapper,
@@ -298,8 +297,9 @@ public class AnalysisService {
         double churnFactor = Math.min(churn / 1000.0, 0.4);
         double filesFactor = Math.min(filesChanged / 20.0, 0.2);
         double findingsFactor = Math.min((critCount * 0.4) + (highCount * 0.25) + (medCount * 0.1) + (lowCount * 0.02), 0.7);
+        double missingTestPenalty = (!hasTests && filesChanged > 0) ? 0.05 : 0.0;
 
-        double rawScore = Math.min(0.05 + churnFactor + filesFactor + findingsFactor, 0.99);
+        double rawScore = Math.min(0.05 + churnFactor + filesFactor + findingsFactor + missingTestPenalty, 0.99);
 
         String riskLevel;
         if (critCount > 0 || rawScore >= 0.75) {

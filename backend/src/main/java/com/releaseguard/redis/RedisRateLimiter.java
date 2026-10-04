@@ -23,6 +23,7 @@ public class RedisRateLimiter {
     private final RedisProperties properties;
 
     @Autowired
+    @SuppressWarnings("deprecation")
     public RedisRateLimiter(
             @org.springframework.lang.Nullable StringRedisTemplate redisTemplate,
             RedisProperties properties

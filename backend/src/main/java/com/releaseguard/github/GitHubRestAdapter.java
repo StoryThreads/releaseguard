@@ -6,8 +6,6 @@ import com.releaseguard.github.dto.GitHubPullRequestResponse;
 import com.releaseguard.github.dto.GitHubPullRequestFileResponse;
 import java.util.List;
 
-import org.springframework.core.ParameterizedTypeReference;
-
 @Component
 public class GitHubRestAdapter {
 

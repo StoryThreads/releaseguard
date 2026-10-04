@@ -267,6 +267,7 @@ class AnalysisServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void shouldUseCachedGitHubFilesAndMlPredictionWhenPresentInRedis() {
         Long projectId = 1L;
         String owner = "owner";

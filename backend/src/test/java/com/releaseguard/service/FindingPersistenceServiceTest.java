@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unchecked")
 class FindingPersistenceServiceTest {
 
     @Mock
