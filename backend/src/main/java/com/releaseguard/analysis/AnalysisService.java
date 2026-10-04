@@ -97,12 +97,26 @@ public class AnalysisService {
         long pullRequestNumber
     ) {
 
-        Source source =
-            sourceService.getOrCreateGitHubSource(
+        Source source = null;
+        if (projectId != null && projectId > 0) {
+            try {
+                source = sourceService.getGitHubSource(
+                    projectId,
+                    owner,
+                    repository
+                );
+            } catch (Exception ex) {
+                // Fall back to getOrCreateGitHubSource if not yet registered
+            }
+        }
+
+        if (source == null) {
+            source = sourceService.getOrCreateGitHubSource(
                 projectId,
                 owner,
                 repository
             );
+        }
 
         GitHubPullRequestResponse pullRequest =
             githubRestAdapter.getPullRequest(
