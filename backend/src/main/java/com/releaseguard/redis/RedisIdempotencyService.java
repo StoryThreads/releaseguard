@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.UUID;
 
 @Service
-@SuppressWarnings("deprecation")
 public class RedisIdempotencyService {
 
     private static final Logger log =

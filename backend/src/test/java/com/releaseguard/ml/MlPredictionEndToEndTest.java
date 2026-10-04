@@ -377,7 +377,7 @@ class MlPredictionEndToEndTest {
             1.0,
             probabilities.values()
                 .stream()
-                .mapToDouble(Double::doubleValue)
+                .mapToDouble(v -> v != null ? v : 0.0)
                 .sum(),
             1.0e-6
         );

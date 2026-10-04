@@ -17,6 +17,9 @@ import com.releaseguard.service.ChangeService;
 import com.releaseguard.service.FindingPersistenceService;
 import com.releaseguard.service.MlPredictionPersistenceService;
 import com.releaseguard.service.SourceService;
+import com.releaseguard.redis.RedisCacheService;
+import com.releaseguard.redis.RedisProperties;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,7 +64,6 @@ public class AnalysisService {
     }
 
     @org.springframework.beans.factory.annotation.Autowired
-    @SuppressWarnings("deprecation")
     public AnalysisService(
         GitHubRestAdapter githubRestAdapter,
         GitHubChangeSnapshotMapper snapshotMapper,
@@ -71,10 +73,8 @@ public class AnalysisService {
         FindingPersistenceService findingPersistenceService,
         MlPredictionClient mlPredictionClient,
         MlPredictionPersistenceService mlPredictionPersistenceService,
-        @org.springframework.lang.Nullable
-        com.releaseguard.redis.RedisCacheService redisCacheService,
-        @org.springframework.lang.Nullable
-        com.releaseguard.redis.RedisProperties redisProperties
+        @Nullable RedisCacheService redisCacheService,
+        @Nullable RedisProperties redisProperties
     ) {
         this.githubRestAdapter = githubRestAdapter;
         this.snapshotMapper = snapshotMapper;

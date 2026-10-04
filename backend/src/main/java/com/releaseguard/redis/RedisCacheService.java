@@ -2,6 +2,7 @@ package com.releaseguard.redis;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +23,8 @@ public class RedisCacheService {
     private final RedisProperties properties;
 
     @Autowired
-    @SuppressWarnings("deprecation")
     public RedisCacheService(
-            @org.springframework.lang.Nullable StringRedisTemplate redisTemplate,
+            @Nullable StringRedisTemplate redisTemplate,
             ObjectMapper objectMapper,
             RedisProperties properties
     ) {

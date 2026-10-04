@@ -7,6 +7,7 @@ import com.releaseguard.repository.FindingRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,11 +20,13 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("unchecked")
 class FindingPersistenceServiceTest {
 
     @Mock
     private FindingRepository findingRepository;
+
+    @Captor
+    private ArgumentCaptor<List<FindingEntity>> captor;
 
     @InjectMocks
     private FindingPersistenceService service;
@@ -56,9 +59,6 @@ class FindingPersistenceServiceTest {
             );
 
         assertEquals(1, result.size());
-
-        ArgumentCaptor<List<FindingEntity>> captor =
-            ArgumentCaptor.forClass(List.class);
 
         verify(findingRepository).saveAll(captor.capture());
 
